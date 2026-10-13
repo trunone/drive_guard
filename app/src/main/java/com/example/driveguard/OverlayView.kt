@@ -21,21 +21,20 @@ class OverlayView(c: Context, a: AttributeSet?) : View(c, a) {
         val s = min(width / r.imgW.toFloat(), height / r.imgH.toFloat())
         val dx = (width - r.imgW * s) / 2f
         val dy = (height - r.imgH * s) / 2f
-        val sev = r.hazards.filter { it.box != null }.associate { it.box!! to it.severity }
-
         // "ego lane" corridor used by the analyzer
         p.color = 0x55FFFFFF; p.strokeWidth = 2f
         c.drawRect(dx + 0.30f * r.imgW * s, dy, dx + 0.70f * r.imgW * s, dy + r.imgH * s, p)
 
         for (d in r.dets) {
-            val col = when (sev[d.box]) {
+            val dSev = r.hazards.firstOrNull { h -> h.box != null && (h.box === d.box || h.box == d.box) }?.severity
+            val col = when (dSev) {
                 Severity.CRITICAL -> 0xFFE53935
                 Severity.WARNING -> 0xFFFFA000
                 Severity.INFO -> 0xFF43A047
                 null -> 0xAAFFFFFF
             }.toInt()
             p.color = col
-            p.strokeWidth = if (sev[d.box] != null) 8f else 3f
+            p.strokeWidth = if (dSev != null) 8f else 3f
             val rect = RectF(dx + d.box.left * s, dy + d.box.top * s, dx + d.box.right * s, dy + d.box.bottom * s)
             c.drawRect(rect, p)
             t.color = col
