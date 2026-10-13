@@ -95,9 +95,13 @@ class MainActivity : AppCompatActivity() {
             val det = detector ?: return
             val raw = img.toBitmap()
             val rot = img.imageInfo.rotationDegrees
-            val bmp = if (rot == 0) raw else Bitmap.createBitmap(
-                raw, 0, 0, raw.width, raw.height, Matrix().apply { postRotate(rot.toFloat()) }, true
-            )
+            val bmp = if (rot == 0) raw else {
+                val rotated = Bitmap.createBitmap(
+                    raw, 0, 0, raw.width, raw.height, Matrix().apply { postRotate(rot.toFloat()) }, true
+                )
+                if (rotated != raw) raw.recycle()
+                rotated
+            }
             val now = SystemClock.elapsedRealtime()
             val spd = speed.current
             val dets = det.detect(bmp)

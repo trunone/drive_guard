@@ -23,16 +23,17 @@ class HazardAnalyzer {
     private var closing = 0f // m/s, smoothed
 
     fun analyze(bmp: Bitmap, dets: List<Det>, speed: Float?, nowMs: Long): List<Hazard> {
-        val w = bmp.width.toFloat()
-        val h = bmp.height.toFloat()
-        val f = (w / 2f) / tan(Math.toRadians(hFovDeg / 2.0)).toFloat() // focal length in px
+        val w = bmp.width.toFloat().coerceAtLeast(1f)
+        val h = bmp.height.toFloat().coerceAtLeast(1f)
+        val fov = hFovDeg.coerceIn(1f, 179f)
+        val f = (w / 2f) / tan(Math.toRadians(fov / 2.0)).toFloat() // focal length in px
         val out = ArrayList<Hazard>()
         fun cx(d: Det) = d.box.centerX() / w
         fun inPath(d: Det) = cx(d) in 0.30f..0.70f && d.box.bottom > 0.45f * h
         fun nearPath(d: Det) = cx(d) in 0.15f..0.85f
 
         // 1) Car ahead: following distance + time to collision
-        val lead = dets.filter { it.label in VEHICLE_WIDTH_M && inPath(it) }.maxByOrNull { it.box.width() }
+        val lead = dets.filter { it.label in VEHICLE_WIDTH_M && inPath(it) && it.box.width() > 0f }.maxByOrNull { it.box.width() }
         if (lead != null) {
             val d = f * VEHICLE_WIDTH_M.getValue(lead.label) / lead.box.width()
             val prev = leadDist
@@ -58,7 +59,7 @@ class HazardAnalyzer {
 
         // 2) Pedestrians / cyclists
         val stopDist = max(12f, (speed ?: 0f) * 2.5f)
-        for (p in dets.filter { it.label in VRU_HEIGHT_M && nearPath(it) }) {
+        for (p in dets.filter { it.label in VRU_HEIGHT_M && nearPath(it) && it.box.height() > 0f }) {
             val d = f * VRU_HEIGHT_M.getValue(p.label) / p.box.height()
             val who = if (p.label == "person") "Pedestrian" else "Cyclist"
             when {
@@ -98,13 +99,26 @@ class HazardAnalyzer {
 /** Colors a detected traffic-light crop by counting bright, saturated red/yellow/green pixels. */
 object LightClassifier {
     fun classify(bmp: Bitmap, b: RectF): LightColor {
+        if (bmp.width < 2 || bmp.height < 2) return LightColor.UNKNOWN
         val l = b.left.toInt().coerceIn(0, bmp.width - 2)
         val t = b.top.toInt().coerceIn(0, bmp.height - 2)
-        val w = b.width().toInt().coerceIn(2, bmp.width - l)
-        val h = b.height().toInt().coerceIn(2, bmp.height - t)
-        val small = Bitmap.createScaledBitmap(Bitmap.createBitmap(bmp, l, t, w, h), 12, 24, true)
+        val maxW = (bmp.width - l).coerceAtLeast(1)
+        val maxH = (bmp.height - t).coerceAtLeast(1)
+        val w = b.width().toInt().coerceIn(1, maxW)
+        val h = b.height().toInt().coerceIn(1, maxH)
+
+        val cropped = Bitmap.createBitmap(bmp, l, t, w, h)
+        val small = Bitmap.createScaledBitmap(cropped, 12, 24, true)
+        if (cropped != bmp && cropped != small) {
+            cropped.recycle()
+        }
+
         val px = IntArray(12 * 24)
         small.getPixels(px, 0, 12, 0, 0, 12, 24)
+        if (small != bmp && small != cropped) {
+            small.recycle()
+        }
+
         var r = 0; var y = 0; var g = 0
         val hsv = FloatArray(3)
         for (p in px) {
