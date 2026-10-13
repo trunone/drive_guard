@@ -94,6 +94,39 @@ class MainActivity : AppCompatActivity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+
+        b.critCooldownSeek.progress = (alerts.critCooldownMs / 1000L).toInt()
+        b.critCooldownLabel.text = "Crit Cooldown: ${alerts.critCooldownMs / 1000L}s"
+        b.critCooldownSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                alerts.critCooldownMs = progress * 1000L
+                b.critCooldownLabel.text = "Crit Cooldown: ${progress}s"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        b.warnCooldownSeek.progress = (alerts.warnCooldownMs / 1000L).toInt()
+        b.warnCooldownLabel.text = "Warn Cooldown: ${alerts.warnCooldownMs / 1000L}s"
+        b.warnCooldownSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                alerts.warnCooldownMs = progress * 1000L
+                b.warnCooldownLabel.text = "Warn Cooldown: ${progress}s"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        b.infoCooldownSeek.progress = (alerts.infoCooldownMs / 1000L).toInt()
+        b.infoCooldownLabel.text = "Info Cooldown: ${alerts.infoCooldownMs / 1000L}s"
+        b.infoCooldownSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                alerts.infoCooldownMs = progress * 1000L
+                b.infoCooldownLabel.text = "Info Cooldown: ${progress}s"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
     }
 
     private fun startCamera() {

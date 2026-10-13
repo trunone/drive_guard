@@ -9,6 +9,9 @@ import java.util.Locale
 class AlertManager(ctx: Context) : TextToSpeech.OnInitListener {
     private val tts = TextToSpeech(ctx, this)
     @Volatile private var ready = false
+    @Volatile var critCooldownMs = 3_000L
+    @Volatile var warnCooldownMs = 6_000L
+    @Volatile var infoCooldownMs = 20_000L
     private val last = HashMap<String, Long>()
 
     override fun onInit(status: Int) {
@@ -20,9 +23,9 @@ class AlertManager(ctx: Context) : TextToSpeech.OnInitListener {
         val now = SystemClock.elapsedRealtime()
         for (h in hazards) {
             val cooldown = when (h.severity) {
-                Severity.CRITICAL -> 3_000L
-                Severity.WARNING -> 6_000L
-                Severity.INFO -> 20_000L
+                Severity.CRITICAL -> critCooldownMs
+                Severity.WARNING -> warnCooldownMs
+                Severity.INFO -> infoCooldownMs
             }
             if (now - (last[h.key] ?: 0L) < cooldown) continue
             last[h.key] = now
