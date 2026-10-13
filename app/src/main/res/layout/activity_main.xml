@@ -35,4 +35,65 @@
         android:background="#88000000"
         android:padding="6dp"
         android:textColor="#FFFFFF" />
+
+    <LinearLayout
+        android:id="@+id/thresholdsPanel"
+        android:layout_width="260dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="8dp"
+        android:background="#AA000000"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/safeHeadwayLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Safe Headway: 2.0s"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/safeHeadwaySeek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="50"
+            android:min="5"
+            android:progress="20" />
+
+        <TextView
+            android:id="@+id/critHeadwayLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Critical Headway: 1.0s"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/critHeadwaySeek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="30"
+            android:min="2"
+            android:progress="10" />
+
+        <TextView
+            android:id="@+id/critTtcLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Critical TTC: 2.5s"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/critTtcSeek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="50"
+            android:min="5"
+            android:progress="25" />
+    </LinearLayout>
 </FrameLayout>
