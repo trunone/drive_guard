@@ -6,16 +6,15 @@ import android.graphics.RectF
 import kotlin.math.max
 import kotlin.math.tan
 
-// ---- Tunable thresholds ----
-private const val SAFE_HEADWAY_S = 2.0f   // warn below this time gap to the car ahead
-private const val CRIT_HEADWAY_S = 1.0f
-private const val CRIT_TTC_S = 2.5f       // time-to-collision
 private val VEHICLE_WIDTH_M = mapOf("car" to 1.8f, "truck" to 2.5f, "bus" to 2.5f, "motorcycle" to 0.8f)
 private val VRU_HEIGHT_M = mapOf("person" to 1.7f, "bicycle" to 1.1f)
 
 /** Turns raw detections into driver hazards. Distances are rough monocular (pinhole) estimates. */
 class HazardAnalyzer {
     @Volatile var hFovDeg = 66f
+    @Volatile var safeHeadwayS = 2.0f   // warn below this time gap to the car ahead
+    @Volatile var critHeadwayS = 1.0f   // critical time gap
+    @Volatile var critTtcS = 2.5f       // critical time-to-collision
 
     private val colors = ArrayDeque<LightColor>()
     private var leadDist: Float? = null
@@ -46,10 +45,10 @@ class HazardAnalyzer {
             val ttc = if (closing > 0.5f) d / closing else Float.MAX_VALUE
             val gap = if (speed != null && speed >= 3f) d / speed else null
             when {
-                ttc < CRIT_TTC_S -> out += Hazard("ttc", "Brake! Collision risk", Severity.CRITICAL, lead.box)
-                gap != null && gap < CRIT_HEADWAY_S ->
+                ttc < critTtcS -> out += Hazard("ttc", "Brake! Collision risk", Severity.CRITICAL, lead.box)
+                gap != null && gap < critHeadwayS ->
                     out += Hazard("gap", "Too close to car ahead, ${"%.0f".format(d)} meters", Severity.CRITICAL, lead.box)
-                gap != null && gap < SAFE_HEADWAY_S -> out += Hazard("gap", "Keep more distance", Severity.WARNING, lead.box)
+                gap != null && gap < safeHeadwayS -> out += Hazard("gap", "Keep more distance", Severity.WARNING, lead.box)
                 gap == null && d < 8f -> out += Hazard("gap", "Car very close ahead", Severity.WARNING, lead.box)
             }
         } else {

@@ -73,4 +73,39 @@ class HazardAnalyzerTest {
         val hazards = analyzer.analyze(bmp, listOf(det), speed = null, nowMs = 1000L)
         assertTrue(hazards.none { it.key == "gap" || it.key == "ttc" })
     }
+
+    @Test
+    fun testThresholdAdjustmentSafeHeadway() {
+        val analyzer = HazardAnalyzer()
+        val bmp = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888)
+        // Box width producing ~18m distance (gap = 1.8s at speed 10 m/s)
+        val carBox = RectF(295.725f, 200f, 344.275f, 384f)
+        val det = Det("car", 0.9f, carBox)
+
+        // Default safeHeadwayS = 2.0s, gap = 1.8s -> triggers gap warning
+        val hazardsDefault = analyzer.analyze(bmp, listOf(det), speed = 10f, nowMs = 1000L)
+        assertTrue(hazardsDefault.any { it.key == "gap" && it.severity == Severity.WARNING })
+
+        // Lower safeHeadwayS to 1.5s -> gap 1.8s is now safe, no gap hazard
+        analyzer.safeHeadwayS = 1.5f
+        val hazardsModified = analyzer.analyze(bmp, listOf(det), speed = 10f, nowMs = 1000L)
+        assertTrue(hazardsModified.none { it.key == "gap" })
+    }
+
+    @Test
+    fun testThresholdAdjustmentCritHeadway() {
+        val analyzer = HazardAnalyzer()
+        val bmp = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888)
+        val carBox = RectF(295.725f, 200f, 344.275f, 384f)
+        val det = Det("car", 0.9f, carBox)
+
+        // Default critHeadwayS = 1.0s, gap = 1.8s -> WARNING
+        val hazardsDefault = analyzer.analyze(bmp, listOf(det), speed = 10f, nowMs = 1000L)
+        assertTrue(hazardsDefault.any { it.key == "gap" && it.severity == Severity.WARNING })
+
+        // Increase critHeadwayS to 2.0s -> gap 1.8s < 2.0s, triggers CRITICAL
+        analyzer.critHeadwayS = 2.0f
+        val hazardsModified = analyzer.analyze(bmp, listOf(det), speed = 10f, nowMs = 1000L)
+        assertTrue(hazardsModified.any { it.key == "gap" && it.severity == Severity.CRITICAL })
+    }
 }

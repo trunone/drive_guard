@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.Size
 import android.view.View
+import android.widget.SeekBar
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.camera2.interop.Camera2CameraInfo
@@ -45,6 +46,7 @@ class MainActivity : AppCompatActivity() {
         b.preview.scaleType = PreviewView.ScaleType.FIT_CENTER
         alerts = AlertManager(this)
         speed = SpeedProvider(this)
+        setupThresholdSliders()
         try {
             detector = HazardDetector(this)
         } catch (e: Exception) {
@@ -54,6 +56,77 @@ class MainActivity : AppCompatActivity() {
             return
         }
         perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
+    private fun setupThresholdSliders() {
+        b.safeHeadwaySeek.progress = (analyzer.safeHeadwayS * 10f).toInt()
+        b.safeHeadwayLabel.text = "Safe Headway: %.1fs".format(analyzer.safeHeadwayS)
+        b.safeHeadwaySeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val v = progress / 10f
+                analyzer.safeHeadwayS = v
+                b.safeHeadwayLabel.text = "Safe Headway: %.1fs".format(v)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        b.critHeadwaySeek.progress = (analyzer.critHeadwayS * 10f).toInt()
+        b.critHeadwayLabel.text = "Critical Headway: %.1fs".format(analyzer.critHeadwayS)
+        b.critHeadwaySeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val v = progress / 10f
+                analyzer.critHeadwayS = v
+                b.critHeadwayLabel.text = "Critical Headway: %.1fs".format(v)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        b.critTtcSeek.progress = (analyzer.critTtcS * 10f).toInt()
+        b.critTtcLabel.text = "Critical TTC: %.1fs".format(analyzer.critTtcS)
+        b.critTtcSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val v = progress / 10f
+                analyzer.critTtcS = v
+                b.critTtcLabel.text = "Critical TTC: %.1fs".format(v)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        b.critCooldownSeek.progress = (alerts.critCooldownMs / 1000L).toInt()
+        b.critCooldownLabel.text = "Crit Cooldown: ${alerts.critCooldownMs / 1000L}s"
+        b.critCooldownSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                alerts.critCooldownMs = progress * 1000L
+                b.critCooldownLabel.text = "Crit Cooldown: ${progress}s"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        b.warnCooldownSeek.progress = (alerts.warnCooldownMs / 1000L).toInt()
+        b.warnCooldownLabel.text = "Warn Cooldown: ${alerts.warnCooldownMs / 1000L}s"
+        b.warnCooldownSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                alerts.warnCooldownMs = progress * 1000L
+                b.warnCooldownLabel.text = "Warn Cooldown: ${progress}s"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        b.infoCooldownSeek.progress = (alerts.infoCooldownMs / 1000L).toInt()
+        b.infoCooldownLabel.text = "Info Cooldown: ${alerts.infoCooldownMs / 1000L}s"
+        b.infoCooldownSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                alerts.infoCooldownMs = progress * 1000L
+                b.infoCooldownLabel.text = "Info Cooldown: ${progress}s"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
     }
 
     private fun startCamera() {

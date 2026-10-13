@@ -35,4 +35,122 @@
         android:background="#88000000"
         android:padding="6dp"
         android:textColor="#FFFFFF" />
+
+    <ScrollView
+        android:id="@+id/thresholdsScrollView"
+        android:layout_width="260dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="8dp"
+        android:background="#AA000000">
+
+        <LinearLayout
+            android:id="@+id/thresholdsPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/safeHeadwayLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Safe Headway: 2.0s"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <SeekBar
+                android:id="@+id/safeHeadwaySeek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="50"
+                android:min="5"
+                android:progress="20" />
+
+            <TextView
+                android:id="@+id/critHeadwayLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Critical Headway: 1.0s"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <SeekBar
+                android:id="@+id/critHeadwaySeek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="30"
+                android:min="2"
+                android:progress="10" />
+
+            <TextView
+                android:id="@+id/critTtcLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Critical TTC: 2.5s"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <SeekBar
+                android:id="@+id/critTtcSeek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="50"
+                android:min="5"
+                android:progress="25" />
+
+            <TextView
+                android:id="@+id/critCooldownLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Crit Cooldown: 3s"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <SeekBar
+                android:id="@+id/critCooldownSeek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="10"
+                android:min="1"
+                android:progress="3" />
+
+            <TextView
+                android:id="@+id/warnCooldownLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Warn Cooldown: 6s"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <SeekBar
+                android:id="@+id/warnCooldownSeek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="20"
+                android:min="1"
+                android:progress="6" />
+
+            <TextView
+                android:id="@+id/infoCooldownLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Info Cooldown: 20s"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <SeekBar
+                android:id="@+id/infoCooldownSeek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="60"
+                android:min="5"
+                android:progress="20" />
+        </LinearLayout>
+    </ScrollView>
 </FrameLayout>
