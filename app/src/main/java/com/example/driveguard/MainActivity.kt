@@ -9,6 +9,7 @@ import android.os.SystemClock
 import android.util.Size
 import android.view.View
 import android.widget.SeekBar
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.camera2.interop.Camera2CameraInfo
@@ -34,9 +35,13 @@ class MainActivity : AppCompatActivity() {
     private var lastTs = 0L
     private var fps = 0f
 
+    private var isRtspMode = false
+    private var rtspConnected = false
+    private var rtspManager: RtspCameraManager? = null
+
     private val perms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         if (r[Manifest.permission.ACCESS_FINE_LOCATION] == true) speed.start()
-        if (r[Manifest.permission.CAMERA] == true) startCamera() else finish()
+        if (!isRtspMode && r[Manifest.permission.CAMERA] == true) startCamera()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +52,7 @@ class MainActivity : AppCompatActivity() {
         alerts = AlertManager(this)
         speed = SpeedProvider(this)
         setupThresholdSliders()
+        setupRtspControls()
         try {
             detector = HazardDetector(this)
         } catch (e: Exception) {
@@ -56,6 +62,60 @@ class MainActivity : AppCompatActivity() {
             return
         }
         perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
+    private fun setupRtspControls() {
+        rtspManager = RtspCameraManager(
+            textureView = b.rtspPreview,
+            executorService = exec,
+            onFrameAvailable = ::processRtspFrame,
+            onError = { errMsg ->
+                runOnUiThread {
+                    rtspConnected = false
+                    b.rtspConnectBtn.text = "Connect"
+                    Toast.makeText(this, errMsg, Toast.LENGTH_LONG).show()
+                }
+            }
+        )
+
+        b.toggleSourceBtn.setOnClickListener {
+            isRtspMode = !isRtspMode
+            if (isRtspMode) {
+                b.toggleSourceBtn.text = "Source: RTSP"
+                b.preview.visibility = View.GONE
+                b.rtspPreview.visibility = View.VISIBLE
+                b.rtspInputContainer.visibility = View.VISIBLE
+                stopCameraX()
+            } else {
+                b.toggleSourceBtn.text = "Source: Camera"
+                b.rtspPreview.visibility = View.GONE
+                b.rtspInputContainer.visibility = View.GONE
+                b.preview.visibility = View.VISIBLE
+                rtspManager?.stop()
+                rtspConnected = false
+                b.rtspConnectBtn.text = "Connect"
+                startCamera()
+            }
+        }
+
+        b.rtspConnectBtn.setOnClickListener {
+            if (rtspConnected) {
+                rtspManager?.stop()
+                rtspConnected = false
+                b.rtspConnectBtn.text = "Connect"
+            } else {
+                val input = b.rtspUrlInput.text.toString()
+                val parsedUrl = RtspUtils.parseRtspUrl(input)
+                if (parsedUrl == null) {
+                    Toast.makeText(this, "Invalid RTSP URL/port. Format: host:port/path", Toast.LENGTH_SHORT).show()
+                } else {
+                    b.rtspUrlInput.setText(parsedUrl)
+                    rtspConnected = true
+                    b.rtspConnectBtn.text = "Disconnect"
+                    rtspManager?.start(parsedUrl)
+                }
+            }
+        }
     }
 
     private fun setupThresholdSliders() {
@@ -153,6 +213,17 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
+    private fun stopCameraX() {
+        try {
+            val future = ProcessCameraProvider.getInstance(this)
+            future.addListener({
+                future.get().unbindAll()
+            }, ContextCompat.getMainExecutor(this))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
     private fun horizontalFov(cam: Camera): Float? = try {
         val info = Camera2CameraInfo.from(cam.cameraInfo)
@@ -165,7 +236,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun analyze(img: ImageProxy) {
         try {
-            val det = detector ?: return
+            if (isRtspMode) return
             val raw = img.toBitmap()
             val rot = img.imageInfo.rotationDegrees
             val bmp = if (rot == 0) raw else {
@@ -175,18 +246,28 @@ class MainActivity : AppCompatActivity() {
                 if (rotated != raw) raw.recycle()
                 rotated
             }
-            val now = SystemClock.elapsedRealtime()
-            val spd = speed.current
-            val dets = det.detect(bmp)
-            val hazards = analyzer.analyze(bmp, dets, spd, now)
-            alerts.handle(hazards)
-            if (lastTs != 0L) fps = 0.9f * fps + 0.1f * (1000f / (now - lastTs).coerceAtLeast(1L))
-            lastTs = now
-            val res = FrameResult(dets, hazards, bmp.width, bmp.height)
-            runOnUiThread { render(res, spd) }
+            processBitmap(bmp)
         } finally {
             img.close()
         }
+    }
+
+    private fun processRtspFrame(bmp: Bitmap) {
+        if (!isRtspMode) return
+        processBitmap(bmp)
+    }
+
+    private fun processBitmap(bmp: Bitmap) {
+        val det = detector ?: return
+        val now = SystemClock.elapsedRealtime()
+        val spd = speed.current
+        val dets = det.detect(bmp)
+        val hazards = analyzer.analyze(bmp, dets, spd, now)
+        alerts.handle(hazards)
+        if (lastTs != 0L) fps = 0.9f * fps + 0.1f * (1000f / (now - lastTs).coerceAtLeast(1L))
+        lastTs = now
+        val res = FrameResult(dets, hazards, bmp.width, bmp.height)
+        runOnUiThread { render(res, spd) }
     }
 
     private fun render(res: FrameResult, spd: Float?) {
@@ -211,6 +292,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        rtspManager?.stop()
         speed.stop()
         alerts.shutdown()
         exec.execute { detector?.close() } // runs after any in-flight frame

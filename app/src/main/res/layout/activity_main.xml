@@ -10,10 +10,63 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <TextureView
+        android:id="@+id/rtspPreview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
     <com.example.driveguard.OverlayView
         android:id="@+id/overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/rtspControlPanel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="8dp"
+        android:background="#AA000000"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/toggleSourceBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Source: Camera"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/rtspInputContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            android:layout_marginTop="4dp">
+
+            <EditText
+                android:id="@+id/rtspUrlInput"
+                android:layout_width="220dp"
+                android:layout_height="wrap_content"
+                android:hint="rtsp://192.168.1.100:554/live"
+                android:inputType="textUri"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#AAAAAA"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/rtspConnectBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="Connect"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
 
     <TextView
         android:id="@+id/banner"
