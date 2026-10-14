@@ -1,6 +1,7 @@
 package com.example.driveguard
 
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.SurfaceTexture
 import android.media.AudioAttributes
 import android.media.MediaPlayer
@@ -17,7 +18,10 @@ class RtspCameraManager(
     private val executorService: ExecutorService,
     private val onFrameAvailable: (Bitmap) -> Unit,
     private val onError: (String) -> Unit
-) : TextureView.SurfaceTextureListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener {
+) : TextureView.SurfaceTextureListener,
+    MediaPlayer.OnPreparedListener,
+    MediaPlayer.OnErrorListener,
+    MediaPlayer.OnVideoSizeChangedListener {
 
     private var mediaPlayer: MediaPlayer? = null
     private var surface: Surface? = null
@@ -104,6 +108,7 @@ class RtspCameraManager(
                 )
                 setOnPreparedListener(this@RtspCameraManager)
                 setOnErrorListener(this@RtspCameraManager)
+                setOnVideoSizeChangedListener(this@RtspCameraManager)
                 prepareAsync()
             }
         } catch (e: Exception) {
@@ -111,7 +116,13 @@ class RtspCameraManager(
         }
     }
 
-    override fun onSurfaceTextureSizeChanged(surfaceTexture: SurfaceTexture, width: Int, height: Int) {}
+    override fun onSurfaceTextureSizeChanged(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+        mediaPlayer?.let { mp ->
+            if (mp.videoWidth > 0 && mp.videoHeight > 0) {
+                adjustAspectRatio(mp.videoWidth, mp.videoHeight)
+            }
+        }
+    }
 
     override fun onSurfaceTextureDestroyed(surfaceTexture: SurfaceTexture): Boolean {
         stop()
@@ -120,8 +131,44 @@ class RtspCameraManager(
 
     override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {}
 
+    override fun onVideoSizeChanged(mp: MediaPlayer?, width: Int, height: Int) {
+        if (width > 0 && height > 0) {
+            adjustAspectRatio(width, height)
+        }
+    }
+
+    private fun adjustAspectRatio(videoWidth: Int, videoHeight: Int) {
+        val viewWidth = textureView.width
+        val viewHeight = textureView.height
+        if (viewWidth <= 0 || viewHeight <= 0) return
+
+        val viewRatio = viewWidth.toDouble() / viewHeight
+        val videoRatio = videoWidth.toDouble() / videoHeight
+
+        var scaleX = 1f
+        var scaleY = 1f
+
+        if (videoRatio > viewRatio) {
+            scaleY = (viewRatio / videoRatio).toFloat()
+        } else {
+            scaleX = (videoRatio / viewRatio).toFloat()
+        }
+
+        val pivotX = viewWidth / 2f
+        val pivotY = viewHeight / 2f
+
+        val matrix = Matrix()
+        matrix.setScale(scaleX, scaleY, pivotX, pivotY)
+        mainHandler.post {
+            textureView.setTransform(matrix)
+        }
+    }
+
     override fun onPrepared(mp: MediaPlayer) {
         try {
+            if (mp.videoWidth > 0 && mp.videoHeight > 0) {
+                adjustAspectRatio(mp.videoWidth, mp.videoHeight)
+            }
             mp.start()
             isPlaying = true
             mainHandler.post(frameCaptureRunnable)
