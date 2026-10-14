@@ -10,6 +10,7 @@ import android.os.Looper
 import android.view.Surface
 import android.view.TextureView
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.atomic.AtomicBoolean
 
 class RtspCameraManager(
     private val textureView: TextureView,
@@ -22,24 +23,32 @@ class RtspCameraManager(
     private var surface: Surface? = null
     private var currentUrl: String? = null
     private var isPlaying = false
+    private val isProcessingFrame = AtomicBoolean(false)
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val frameCaptureRunnable = object : Runnable {
         override fun run() {
             if (isPlaying && textureView.isAvailable) {
-                val bitmap = textureView.bitmap
-                if (bitmap != null) {
-                    executorService.execute {
-                        try {
-                            onFrameAvailable(bitmap)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+                if (isProcessingFrame.compareAndSet(false, true)) {
+                    val bitmap = textureView.getBitmap(640, 480) ?: textureView.bitmap
+                    if (bitmap != null) {
+                        executorService.execute {
+                            try {
+                                onFrameAvailable(bitmap)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            } finally {
+                                bitmap.recycle()
+                                isProcessingFrame.set(false)
+                            }
                         }
+                    } else {
+                        isProcessingFrame.set(false)
                     }
                 }
             }
             if (isPlaying) {
-                mainHandler.postDelayed(this, 100) // ~10 FPS frame sampling for ML inference
+                mainHandler.postDelayed(this, 100) // ~10 FPS frame sampling
             }
         }
     }
@@ -59,6 +68,7 @@ class RtspCameraManager(
     fun stop() {
         isPlaying = false
         mainHandler.removeCallbacks(frameCaptureRunnable)
+        isProcessingFrame.set(false)
         try {
             mediaPlayer?.apply {
                 if (isPlaying) stop()
@@ -81,7 +91,11 @@ class RtspCameraManager(
             surface = Surface(surfaceTexture)
             mediaPlayer = MediaPlayer().apply {
                 setSurface(surface)
-                setDataSource(textureView.context, Uri.parse(url))
+                val headers = mapOf(
+                    "rtsp_transport" to "tcp",
+                    "rtsp_flags" to "prefer_tcp"
+                )
+                setDataSource(textureView.context, Uri.parse(url), headers)
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
@@ -119,6 +133,7 @@ class RtspCameraManager(
     override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
         isPlaying = false
         mainHandler.removeCallbacks(frameCaptureRunnable)
+        isProcessingFrame.set(false)
         onError("RTSP playback error (what: $what, extra: $extra)")
         return true
     }

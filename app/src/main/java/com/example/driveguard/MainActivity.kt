@@ -255,7 +255,12 @@ class MainActivity : AppCompatActivity() {
                 if (rotated != raw) raw.recycle()
                 rotated
             }
-            processBitmap(bmp)
+            try {
+                processBitmap(bmp)
+            } finally {
+                if (bmp != raw) bmp.recycle()
+                raw.recycle()
+            }
         } finally {
             img.close()
         }
