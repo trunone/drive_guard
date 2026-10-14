@@ -49,9 +49,9 @@
 
             <EditText
                 android:id="@+id/rtspUrlInput"
-                android:layout_width="220dp"
+                android:layout_width="240dp"
                 android:layout_height="wrap_content"
-                android:hint="rtsp://192.168.1.100:554/live"
+                android:hint="rtsp://192.168.0.1:554/livestream/12"
                 android:inputType="textUri"
                 android:textColor="#FFFFFF"
                 android:textColorHint="#AAAAAA"

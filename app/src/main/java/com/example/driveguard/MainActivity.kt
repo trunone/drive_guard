@@ -25,6 +25,10 @@ import com.example.driveguard.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 import kotlin.math.atan
 
+private const val DEFAULT_RTSP_URL = "rtsp://192.168.0.1:554/livestream/12"
+private const val PREFS_NAME = "driveguard_prefs"
+private const val KEY_RTSP_URL = "saved_rtsp_url"
+
 class MainActivity : AppCompatActivity() {
     private lateinit var b: ActivityMainBinding
     private lateinit var alerts: AlertManager
@@ -65,6 +69,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRtspControls() {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val initialUrl = prefs.getString(KEY_RTSP_URL, DEFAULT_RTSP_URL) ?: DEFAULT_RTSP_URL
+        b.rtspUrlInput.setText(initialUrl)
+
         rtspManager = RtspCameraManager(
             textureView = b.rtspPreview,
             executorService = exec,
@@ -110,6 +118,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Invalid RTSP URL/port. Format: host:port/path", Toast.LENGTH_SHORT).show()
                 } else {
                     b.rtspUrlInput.setText(parsedUrl)
+                    prefs.edit().putString(KEY_RTSP_URL, parsedUrl).apply()
                     rtspConnected = true
                     b.rtspConnectBtn.text = "Disconnect"
                     rtspManager?.start(parsedUrl)
