@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Shield Glow / Shadow Fill -->
+    <path
+        android:pathData="M 32,28 C 44,24 64,24 76,28 C 76,53 68,70 54,81 C 40,70 32,53 32,28 Z"
+        android:fillColor="#200284C7" />
+
+    <!-- Shield Inner Backdrop -->
+    <path
+        android:pathData="M 35,31 C 45,27 63,27 73,31 C 73,52 66,67 54,77 C 42,67 35,52 35,31 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="27"
+                android:endX="54"
+                android:endY="77"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF0B172C" />
+                <item android:offset="1.0" android:color="#FF050C1A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Shield Border Outline -->
+    <path
+        android:pathData="M 32,28 C 44,24 64,24 76,28 C 76,53 68,70 54,81 C 40,70 32,53 32,28 Z"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="32"
+                android:startY="28"
+                android:endX="76"
+                android:endY="81"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF38BDF8" />
+                <item android:offset="0.5" android:color="#FF0284C7" />
+                <item android:offset="1.0" android:color="#FF0369A1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Converging Highway Road -->
+    <path
+        android:pathData="M 42,75 L 49,48 L 59,48 L 66,75 Z"
+        android:fillColor="#151E2E" />
+
+    <!-- Road Outer Boundary Lines -->
+    <path
+        android:pathData="M 42,75 L 49,48"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M 66,75 L 59,48"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+
+    <!-- Road Dashed Centerline -->
+    <path
+        android:pathData="M 54,72 L 54,65 M 54,61 L 54,56 M 54,53 L 54,49"
+        android:strokeColor="#E0F2FE"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round" />
+
+    <!-- Radar Hazard Detection Waves -->
+    <path
+        android:pathData="M 47,44 A 9,9 0 0,1 61,44"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M 42,39 A 15,15 0 0,1 66,39"
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M 37,34 A 21,21 0 0,1 71,34"
+        android:strokeColor="#EF4444"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Hazard Alert Diamond / Beacon at Radar Center -->
+    <path
+        android:pathData="M 54,29 L 57.5,33 L 54,37 L 50.5,33 Z"
+        android:fillColor="#EF4444" />
+    <path
+        android:pathData="M 54,31 L 55.5,33 L 54,35 L 52.5,33 Z"
+        android:fillColor="#FDE047" />
+
+    <!-- Stylized Vehicle Icon on Road -->
+    <path
+        android:pathData="M 47,63 L 48,58 C 48.5,56.5 49.5,56 51,56 L 57,56 C 58.5,56 59.5,56.5 60,58 L 61,63 C 62,63.5 62.5,64.2 62.5,65 L 62.5,67 C 62.5,67.5 62,68 61.5,68 L 61,68 L 61,69 C 61,69.5 60.5,70 60,70 L 59,70 C 58.5,70 58,69.5 58,69 L 58,68 L 50,68 L 50,69 C 50,69.5 49.5,70 49,70 L 48,70 C 47.5,70 47,69.5 47,69 L 47,68 L 46.5,68 C 46,68 45.5,67.5 45.5,67 L 45.5,65 C 45.5,64.2 46,63.5 47,63 Z"
+        android:fillColor="#F8FAFC" />
+    <!-- Vehicle Windshield -->
+    <path
+        android:pathData="M 49,59 L 50,57.5 C 50.3,57 51,57 52,57 L 56,57 C 57,57 57.7,57 58,57.5 L 59,59 Z"
+        android:fillColor="#0F172A" />
+    <!-- Vehicle Headlights / Taillights (Rear View / Front View) -->
+    <path
+        android:pathData="M 47.5,65 A 1,1 0 1,1 47.49,65 Z"
+        android:fillColor="#F59E0B" />
+    <path
+        android:pathData="M 60.5,65 A 1,1 0 1,1 60.49,65 Z"
+        android:fillColor="#F59E0B" />
+</vector>
