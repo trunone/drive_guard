@@ -33,10 +33,12 @@ class MainActivity : AppCompatActivity() {
     private val exec = Executors.newSingleThreadExecutor()
     private var lastTs = 0L
     private var fps = 0f
+    private var isTrapCameraActive = false
+    private var trapCameraFetcher: TrapCameraFetcher? = null
 
     private val perms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         if (r[Manifest.permission.ACCESS_FINE_LOCATION] == true) speed.start()
-        if (r[Manifest.permission.CAMERA] == true) startCamera() else finish()
+        if (r[Manifest.permission.CAMERA] == true && !isTrapCameraActive) startCamera()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +49,7 @@ class MainActivity : AppCompatActivity() {
         alerts = AlertManager(this)
         speed = SpeedProvider(this)
         setupThresholdSliders()
+        setupTrapCameraControls()
         try {
             detector = HazardDetector(this)
         } catch (e: Exception) {
@@ -56,6 +59,72 @@ class MainActivity : AppCompatActivity() {
             return
         }
         perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
+    private fun setupTrapCameraControls() {
+        b.connectTrapCamBtn.setOnClickListener {
+            connectTrapCamera()
+        }
+        b.useLocalCamBtn.setOnClickListener {
+            switchToLocalCamera()
+        }
+    }
+
+    private fun connectTrapCamera() {
+        val inputUrl = b.trapCamUrlInput.text.toString()
+        val formattedUrl = try {
+            TrapCameraUrlParser.parseUrl(inputUrl)
+        } catch (e: Exception) {
+            b.banner.visibility = View.VISIBLE
+            b.banner.setBackgroundColor(0xDDD32F2F.toInt())
+            b.banner.text = "Invalid URL: ${e.message}"
+            return
+        }
+
+        isTrapCameraActive = true
+        stopCamera()
+        trapCameraFetcher?.stop()
+
+        b.preview.visibility = View.GONE
+        b.trapCameraPreview.visibility = View.VISIBLE
+        b.banner.visibility = View.GONE
+
+        trapCameraFetcher = TrapCameraFetcher(
+            rawUrl = formattedUrl,
+            onFrameReceived = { bmp ->
+                runOnUiThread {
+                    b.trapCameraPreview.setImageBitmap(bmp)
+                }
+                exec.execute {
+                    processBitmapFrame(bmp)
+                }
+            },
+            onError = { errorMsg ->
+                runOnUiThread {
+                    b.status.text = "Trap Cam: $errorMsg"
+                }
+            }
+        ).apply { start() }
+    }
+
+    private fun switchToLocalCamera() {
+        isTrapCameraActive = false
+        trapCameraFetcher?.stop()
+        trapCameraFetcher = null
+        b.trapCameraPreview.visibility = View.GONE
+        b.preview.visibility = View.VISIBLE
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            startCamera()
+        } else {
+            perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+        }
+    }
+
+    private fun stopCamera() {
+        try {
+            val provider = ProcessCameraProvider.getInstance(this).get()
+            provider.unbindAll()
+        } catch (_: Exception) {}
     }
 
     private fun setupThresholdSliders() {
@@ -165,7 +234,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun analyze(img: ImageProxy) {
         try {
-            val det = detector ?: return
+            if (isTrapCameraActive) return
             val raw = img.toBitmap()
             val rot = img.imageInfo.rotationDegrees
             val bmp = if (rot == 0) raw else {
@@ -175,18 +244,23 @@ class MainActivity : AppCompatActivity() {
                 if (rotated != raw) raw.recycle()
                 rotated
             }
-            val now = SystemClock.elapsedRealtime()
-            val spd = speed.current
-            val dets = det.detect(bmp)
-            val hazards = analyzer.analyze(bmp, dets, spd, now)
-            alerts.handle(hazards)
-            if (lastTs != 0L) fps = 0.9f * fps + 0.1f * (1000f / (now - lastTs).coerceAtLeast(1L))
-            lastTs = now
-            val res = FrameResult(dets, hazards, bmp.width, bmp.height)
-            runOnUiThread { render(res, spd) }
+            processBitmapFrame(bmp)
         } finally {
             img.close()
         }
+    }
+
+    private fun processBitmapFrame(bmp: Bitmap) {
+        val det = detector ?: return
+        val now = SystemClock.elapsedRealtime()
+        val spd = speed.current
+        val dets = det.detect(bmp)
+        val hazards = analyzer.analyze(bmp, dets, spd, now)
+        alerts.handle(hazards)
+        if (lastTs != 0L) fps = 0.9f * fps + 0.1f * (1000f / (now - lastTs).coerceAtLeast(1L))
+        lastTs = now
+        val res = FrameResult(dets, hazards, bmp.width, bmp.height)
+        runOnUiThread { render(res, spd) }
     }
 
     private fun render(res: FrameResult, spd: Float?) {
@@ -211,6 +285,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        trapCameraFetcher?.stop()
         speed.stop()
         alerts.shutdown()
         exec.execute { detector?.close() } // runs after any in-flight frame
