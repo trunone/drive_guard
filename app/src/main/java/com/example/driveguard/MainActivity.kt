@@ -76,7 +76,9 @@ class MainActivity : AppCompatActivity() {
         rtspManager = RtspCameraManager(
             textureView = b.rtspPreview,
             executorService = exec,
-            onFrameAvailable = ::processRtspFrame,
+            onFrameAvailable = { bmp, onComplete ->
+                processRtspFrame(bmp, onComplete)
+            },
             onError = { errMsg ->
                 runOnUiThread {
                     rtspConnected = false
@@ -266,9 +268,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun processRtspFrame(bmp: Bitmap) {
-        if (!isRtspMode) return
-        processBitmap(bmp)
+    private fun processRtspFrame(bmp: Bitmap, onComplete: () -> Unit) {
+        if (!isRtspMode) {
+            onComplete()
+            return
+        }
+        try {
+            processBitmap(bmp)
+        } finally {
+            onComplete()
+        }
     }
 
     private fun processBitmap(bmp: Bitmap) {

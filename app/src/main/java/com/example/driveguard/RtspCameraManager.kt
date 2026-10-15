@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class RtspCameraManager(
     private val textureView: TextureView,
     private val executorService: ExecutorService,
-    private val onFrameAvailable: (Bitmap) -> Unit,
+    private val onFrameAvailable: (Bitmap, () -> Unit) -> Unit,
     private val onError: (String) -> Unit
 ) : TextureView.SurfaceTextureListener,
     MediaPlayer.OnPreparedListener,
@@ -41,12 +41,14 @@ class RtspCameraManager(
                         try {
                             executorService.execute {
                                 try {
-                                    onFrameAvailable(bitmap)
+                                    onFrameAvailable(bitmap) {
+                                        isProcessingFrame.set(false)
+                                    }
                                 } catch (e: Exception) {
                                     e.printStackTrace()
+                                    isProcessingFrame.set(false)
                                 } finally {
                                     bitmap.recycle()
-                                    isProcessingFrame.set(false)
                                 }
                             }
                         } catch (e: Exception) {
@@ -59,7 +61,7 @@ class RtspCameraManager(
                 }
             }
             if (isPlaying) {
-                mainHandler.postDelayed(this, 100L) // ~10 FPS frame sampling
+                mainHandler.postDelayed(this, 150L) // ~6.6 FPS frame sampling
             }
         }
     }
@@ -68,7 +70,7 @@ class RtspCameraManager(
         override fun run() {
             if (isPlaying) {
                 val now = android.os.SystemClock.elapsedRealtime()
-                if (lastSurfaceUpdateTimeMs > 0 && now - lastSurfaceUpdateTimeMs > 4000L) {
+                if (lastSurfaceUpdateTimeMs > 0 && now - lastSurfaceUpdateTimeMs > 2500L) {
                     val url = currentUrl
                     if (url != null) {
                         stop()
@@ -76,7 +78,7 @@ class RtspCameraManager(
                         return
                     }
                 }
-                mainHandler.postDelayed(this, 2000L)
+                mainHandler.postDelayed(this, 1000L)
             }
         }
     }
@@ -205,7 +207,7 @@ class RtspCameraManager(
             mainHandler.removeCallbacks(frameCaptureRunnable)
             mainHandler.post(frameCaptureRunnable)
             mainHandler.removeCallbacks(watchdogRunnable)
-            mainHandler.postDelayed(watchdogRunnable, 2000L)
+            mainHandler.postDelayed(watchdogRunnable, 1000L)
         } catch (e: Exception) {
             onError("Failed to play RTSP stream: ${e.localizedMessage}")
         }
