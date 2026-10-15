@@ -28,10 +28,42 @@ class RtspCameraManager(
     private var currentUrl: String? = null
     private var isPlaying = false
     private val isProcessingFrame = AtomicBoolean(false)
-    private var lastFrameTimeMs = 0L
     private var lastSurfaceUpdateTimeMs = 0L
 
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    private val frameCaptureRunnable = object : Runnable {
+        override fun run() {
+            if (isPlaying && textureView.isAvailable) {
+                if (isProcessingFrame.compareAndSet(false, true)) {
+                    val bitmap = textureView.getBitmap(640, 480)
+                    if (bitmap != null) {
+                        try {
+                            executorService.execute {
+                                try {
+                                    onFrameAvailable(bitmap)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                } finally {
+                                    bitmap.recycle()
+                                    isProcessingFrame.set(false)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            bitmap.recycle()
+                            isProcessingFrame.set(false)
+                        }
+                    } else {
+                        isProcessingFrame.set(false)
+                    }
+                }
+            }
+            if (isPlaying) {
+                mainHandler.postDelayed(this, 100L) // ~10 FPS frame sampling
+            }
+        }
+    }
+
     private val watchdogRunnable = object : Runnable {
         override fun run() {
             if (isPlaying) {
@@ -63,8 +95,8 @@ class RtspCameraManager(
 
     fun stop() {
         isPlaying = false
+        mainHandler.removeCallbacks(frameCaptureRunnable)
         mainHandler.removeCallbacks(watchdogRunnable)
-        lastFrameTimeMs = 0L
         lastSurfaceUpdateTimeMs = 0L
         isProcessingFrame.set(false)
         try {
@@ -87,20 +119,13 @@ class RtspCameraManager(
         val url = currentUrl ?: return
         try {
             surface = Surface(surfaceTexture)
-            val parsedUri = Uri.parse(url)
-            val uriWithTcp = if (parsedUri.getQueryParameter("rtsp_transport") == null) {
-                parsedUri.buildUpon().appendQueryParameter("rtsp_transport", "tcp").build()
-            } else {
-                parsedUri
-            }
-
             mediaPlayer = MediaPlayer().apply {
                 setSurface(surface)
                 val headers = mapOf(
                     "rtsp_transport" to "tcp",
                     "rtsp_flags" to "prefer_tcp"
                 )
-                setDataSource(textureView.context, uriWithTcp, headers)
+                setDataSource(textureView.context, Uri.parse(url), headers)
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
@@ -131,31 +156,8 @@ class RtspCameraManager(
     }
 
     override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {
-        if (!isPlaying || !textureView.isAvailable) return
-        val now = android.os.SystemClock.elapsedRealtime()
-        lastSurfaceUpdateTimeMs = now
-        if (now - lastFrameTimeMs >= 100L) { // ~10 FPS frame sampling
-            if (isProcessingFrame.compareAndSet(false, true)) {
-                lastFrameTimeMs = now
-                val bitmap = textureView.getBitmap(640, 480) ?: textureView.bitmap
-                if (bitmap != null) {
-                    try {
-                        executorService.execute {
-                            try {
-                                onFrameAvailable(bitmap)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            } finally {
-                                isProcessingFrame.set(false)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        isProcessingFrame.set(false)
-                    }
-                } else {
-                    isProcessingFrame.set(false)
-                }
-            }
+        if (isPlaying) {
+            lastSurfaceUpdateTimeMs = android.os.SystemClock.elapsedRealtime()
         }
     }
 
@@ -200,6 +202,8 @@ class RtspCameraManager(
             mp.start()
             isPlaying = true
             lastSurfaceUpdateTimeMs = android.os.SystemClock.elapsedRealtime()
+            mainHandler.removeCallbacks(frameCaptureRunnable)
+            mainHandler.post(frameCaptureRunnable)
             mainHandler.removeCallbacks(watchdogRunnable)
             mainHandler.postDelayed(watchdogRunnable, 2000L)
         } catch (e: Exception) {
@@ -209,6 +213,7 @@ class RtspCameraManager(
 
     override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
         isPlaying = false
+        mainHandler.removeCallbacks(frameCaptureRunnable)
         mainHandler.removeCallbacks(watchdogRunnable)
         isProcessingFrame.set(false)
         onError("RTSP playback error (what: $what, extra: $extra)")
