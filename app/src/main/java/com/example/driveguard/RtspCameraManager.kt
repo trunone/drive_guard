@@ -28,34 +28,9 @@ class RtspCameraManager(
     private var currentUrl: String? = null
     private var isPlaying = false
     private val isProcessingFrame = AtomicBoolean(false)
+    private var lastFrameTimeMs = 0L
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val frameCaptureRunnable = object : Runnable {
-        override fun run() {
-            if (isPlaying && textureView.isAvailable) {
-                if (isProcessingFrame.compareAndSet(false, true)) {
-                    val bitmap = textureView.getBitmap(640, 480) ?: textureView.bitmap
-                    if (bitmap != null) {
-                        executorService.execute {
-                            try {
-                                onFrameAvailable(bitmap)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            } finally {
-                                bitmap.recycle()
-                                isProcessingFrame.set(false)
-                            }
-                        }
-                    } else {
-                        isProcessingFrame.set(false)
-                    }
-                }
-            }
-            if (isPlaying) {
-                mainHandler.postDelayed(this, 100) // ~10 FPS frame sampling
-            }
-        }
-    }
 
     fun start(rtspUrl: String) {
         stop()
@@ -71,7 +46,7 @@ class RtspCameraManager(
 
     fun stop() {
         isPlaying = false
-        mainHandler.removeCallbacks(frameCaptureRunnable)
+        lastFrameTimeMs = 0L
         isProcessingFrame.set(false)
         try {
             mediaPlayer?.apply {
@@ -129,7 +104,33 @@ class RtspCameraManager(
         return true
     }
 
-    override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {}
+    override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {
+        if (!isPlaying || !textureView.isAvailable) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastFrameTimeMs >= 100L) { // ~10 FPS frame sampling
+            if (isProcessingFrame.compareAndSet(false, true)) {
+                lastFrameTimeMs = now
+                val bitmap = textureView.getBitmap(640, 480) ?: textureView.bitmap
+                if (bitmap != null) {
+                    try {
+                        executorService.execute {
+                            try {
+                                onFrameAvailable(bitmap)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            } finally {
+                                isProcessingFrame.set(false)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        isProcessingFrame.set(false)
+                    }
+                } else {
+                    isProcessingFrame.set(false)
+                }
+            }
+        }
+    }
 
     override fun onVideoSizeChanged(mp: MediaPlayer?, width: Int, height: Int) {
         if (width > 0 && height > 0) {
@@ -171,7 +172,6 @@ class RtspCameraManager(
             }
             mp.start()
             isPlaying = true
-            mainHandler.post(frameCaptureRunnable)
         } catch (e: Exception) {
             onError("Failed to play RTSP stream: ${e.localizedMessage}")
         }
@@ -179,7 +179,6 @@ class RtspCameraManager(
 
     override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
         isPlaying = false
-        mainHandler.removeCallbacks(frameCaptureRunnable)
         isProcessingFrame.set(false)
         onError("RTSP playback error (what: $what, extra: $extra)")
         return true
