@@ -47,12 +47,9 @@ class RtspCameraManager(
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                     isProcessingFrame.set(false)
-                                } finally {
-                                    bitmap.recycle()
                                 }
                             }
                         } catch (e: Exception) {
-                            bitmap.recycle()
                             isProcessingFrame.set(false)
                         }
                     } else {
