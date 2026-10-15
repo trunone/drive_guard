@@ -4,13 +4,16 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.TextureView
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
+import androidx.media3.exoplayer.video.VideoFrameMetadataListener
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -25,12 +28,48 @@ class RtspCameraManager(
     private var isPlaying = false
     private val isProcessingFrame = AtomicBoolean(false)
 
+    @Volatile
+    var lastFrameTimeMs = 0L
+        private set
+
     private var lastVideoWidth = 0
     private var lastVideoHeight = 0
 
+    var watchdogTimeoutMs = 4000L
+    private val watchdogCheckIntervalMs = 1000L
+
+    var bufferingTimeoutMs = 4000L
+
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val frameCaptureRunnable = object : Runnable {
+
+    private val bufferingTimeoutRunnable = Runnable {
+        val urlToRestart = currentUrl
+        if (urlToRestart != null) {
+            stop()
+            start(urlToRestart)
+        }
+    }
+
+    private val watchdogRunnable = object : Runnable {
         override fun run() {
+            if (currentUrl != null && exoPlayer != null) {
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastFrameTimeMs >= watchdogTimeoutMs) {
+                    val urlToRestart = currentUrl
+                    if (urlToRestart != null) {
+                        stop()
+                        start(urlToRestart)
+                    }
+                    return
+                }
+                mainHandler.postDelayed(this, watchdogCheckIntervalMs)
+            }
+        }
+    }
+
+    private val frameMetadataListener = VideoFrameMetadataListener { _, _, _, _ ->
+        lastFrameTimeMs = SystemClock.elapsedRealtime()
+        mainHandler.post {
             if (isPlaying && textureView.isAvailable) {
                 if (isProcessingFrame.compareAndSet(false, true)) {
                     val bitmap = textureView.getBitmap(640, 480) ?: textureView.bitmap
@@ -50,9 +89,6 @@ class RtspCameraManager(
                     }
                 }
             }
-            if (isPlaying) {
-                mainHandler.postDelayed(this, 100) // ~10 FPS frame sampling
-            }
         }
     }
 
@@ -70,27 +106,25 @@ class RtspCameraManager(
         override fun onPlaybackStateChanged(playbackState: Int) {
             when (playbackState) {
                 Player.STATE_READY -> {
-                    if (!isPlaying) {
-                        isPlaying = true
-                        mainHandler.removeCallbacks(frameCaptureRunnable)
-                        mainHandler.post(frameCaptureRunnable)
-                    }
+                    isPlaying = true
+                    mainHandler.removeCallbacks(bufferingTimeoutRunnable)
                 }
                 Player.STATE_ENDED, Player.STATE_IDLE -> {
                     isPlaying = false
-                    mainHandler.removeCallbacks(frameCaptureRunnable)
                     isProcessingFrame.set(false)
+                    mainHandler.removeCallbacks(bufferingTimeoutRunnable)
                 }
                 Player.STATE_BUFFERING -> {
-                    // Stream buffering
+                    mainHandler.removeCallbacks(bufferingTimeoutRunnable)
+                    mainHandler.postDelayed(bufferingTimeoutRunnable, bufferingTimeoutMs)
                 }
             }
         }
 
         override fun onPlayerError(error: PlaybackException) {
             isPlaying = false
-            mainHandler.removeCallbacks(frameCaptureRunnable)
             isProcessingFrame.set(false)
+            mainHandler.removeCallbacks(bufferingTimeoutRunnable)
             onError("RTSP playback error: ${error.localizedMessage ?: error.message}")
         }
     }
@@ -98,19 +132,26 @@ class RtspCameraManager(
     fun start(rtspUrl: String) {
         stop()
         currentUrl = rtspUrl
+        lastFrameTimeMs = SystemClock.elapsedRealtime()
         try {
             val mediaSource = RtspMediaSource.Factory()
                 .setForceUseRtpTcp(true)
                 .createMediaSource(MediaItem.fromUri(rtspUrl))
 
             val player = ExoPlayer.Builder(textureView.context).build().apply {
+                trackSelectionParameters = trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
+                    .build()
                 setMediaSource(mediaSource)
                 addListener(playerListener)
                 setVideoTextureView(textureView)
+                setVideoFrameMetadataListener(frameMetadataListener)
                 prepare()
                 playWhenReady = true
             }
             exoPlayer = player
+            mainHandler.removeCallbacks(watchdogRunnable)
+            mainHandler.postDelayed(watchdogRunnable, watchdogCheckIntervalMs)
         } catch (e: Exception) {
             onError("Failed to start RTSP player: ${e.localizedMessage}")
         }
@@ -118,8 +159,9 @@ class RtspCameraManager(
 
     fun stop() {
         isPlaying = false
-        mainHandler.removeCallbacks(frameCaptureRunnable)
         isProcessingFrame.set(false)
+        mainHandler.removeCallbacks(watchdogRunnable)
+        mainHandler.removeCallbacks(bufferingTimeoutRunnable)
         try {
             exoPlayer?.apply {
                 stop()
