@@ -34,4 +34,5 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$camerax")
     implementation("androidx.camera:camera-view:$camerax")
     implementation("com.google.mediapipe:tasks-vision:0.10.14")
+    implementation("org.videolan.android:libvlc-all:3.6.5")
 }

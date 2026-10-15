@@ -1,15 +1,14 @@
 package com.example.driveguard
 
 import android.graphics.Bitmap
-import android.graphics.Matrix
 import android.graphics.SurfaceTexture
-import android.media.AudioAttributes
-import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import android.view.Surface
 import android.view.TextureView
+import org.videolan.libvlc.LibVLC
+import org.videolan.libvlc.Media
+import org.videolan.libvlc.MediaPlayer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -18,13 +17,10 @@ class RtspCameraManager(
     private val executorService: ExecutorService,
     private val onFrameAvailable: (Bitmap) -> Unit,
     private val onError: (String) -> Unit
-) : TextureView.SurfaceTextureListener,
-    MediaPlayer.OnPreparedListener,
-    MediaPlayer.OnErrorListener,
-    MediaPlayer.OnVideoSizeChangedListener {
+) : TextureView.SurfaceTextureListener {
 
+    private var libVlc: LibVLC? = null
     private var mediaPlayer: MediaPlayer? = null
-    private var surface: Surface? = null
     private var currentUrl: String? = null
     private var isPlaying = false
     private val isProcessingFrame = AtomicBoolean(false)
@@ -73,11 +69,14 @@ class RtspCameraManager(
         isPlaying = false
         mainHandler.removeCallbacks(frameCaptureRunnable)
         isProcessingFrame.set(false)
+
         try {
-            mediaPlayer?.apply {
-                if (isPlaying) stop()
-                reset()
-                release()
+            mediaPlayer?.let { mp ->
+                if (mp.isPlaying) {
+                    mp.stop()
+                }
+                mp.vlcVout.detachViews()
+                mp.release()
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -85,43 +84,79 @@ class RtspCameraManager(
             mediaPlayer = null
         }
 
-        surface?.release()
-        surface = null
+        try {
+            libVlc?.release()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            libVlc = null
+        }
     }
 
     override fun onSurfaceTextureAvailable(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
         val url = currentUrl ?: return
         try {
-            surface = Surface(surfaceTexture)
-            mediaPlayer = MediaPlayer().apply {
-                setSurface(surface)
-                val headers = mapOf(
-                    "rtsp_transport" to "tcp",
-                    "rtsp_flags" to "prefer_tcp"
-                )
-                setDataSource(textureView.context, Uri.parse(url), headers)
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .build()
-                )
-                setOnPreparedListener(this@RtspCameraManager)
-                setOnErrorListener(this@RtspCameraManager)
-                setOnVideoSizeChangedListener(this@RtspCameraManager)
-                prepareAsync()
+            val options = arrayListOf(
+                "--rtsp-tcp",
+                "--network-caching=150",
+                "--clock-jitter=0",
+                "--clock-synchro=0",
+                "--drop-late-frames",
+                "--skip-frames"
+            )
+            val vlc = LibVLC(textureView.context, options)
+            libVlc = vlc
+
+            val mp = MediaPlayer(vlc)
+            mediaPlayer = mp
+
+            val vlcVout = mp.vlcVout
+            vlcVout.setVideoSurface(surfaceTexture)
+            vlcVout.setWindowSize(width, height)
+            vlcVout.attachViews()
+
+            mp.setEventListener { event ->
+                when (event.type) {
+                    MediaPlayer.Event.Playing -> {
+                        isPlaying = true
+                        mainHandler.post {
+                            if (isPlaying) {
+                                mainHandler.post(frameCaptureRunnable)
+                            }
+                        }
+                    }
+                    MediaPlayer.Event.EncounteredError -> {
+                        isPlaying = false
+                        mainHandler.removeCallbacks(frameCaptureRunnable)
+                        isProcessingFrame.set(false)
+                        mainHandler.post {
+                            onError("LibVLC playback error encountered")
+                        }
+                    }
+                    MediaPlayer.Event.Stopped -> {
+                        isPlaying = false
+                        mainHandler.removeCallbacks(frameCaptureRunnable)
+                        isProcessingFrame.set(false)
+                    }
+                }
             }
+
+            val media = Media(vlc, Uri.parse(url))
+            media.setHWDecoderEnabled(true, false)
+            media.addOption(":network-caching=150")
+            media.addOption(":rtsp-tcp")
+
+            mp.media = media
+            media.release()
+
+            mp.play()
         } catch (e: Exception) {
             onError("Failed to start RTSP player: ${e.localizedMessage}")
         }
     }
 
     override fun onSurfaceTextureSizeChanged(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
-        mediaPlayer?.let { mp ->
-            if (mp.videoWidth > 0 && mp.videoHeight > 0) {
-                adjustAspectRatio(mp.videoWidth, mp.videoHeight)
-            }
-        }
+        mediaPlayer?.vlcVout?.setWindowSize(width, height)
     }
 
     override fun onSurfaceTextureDestroyed(surfaceTexture: SurfaceTexture): Boolean {
@@ -130,58 +165,4 @@ class RtspCameraManager(
     }
 
     override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {}
-
-    override fun onVideoSizeChanged(mp: MediaPlayer?, width: Int, height: Int) {
-        if (width > 0 && height > 0) {
-            adjustAspectRatio(width, height)
-        }
-    }
-
-    private fun adjustAspectRatio(videoWidth: Int, videoHeight: Int) {
-        val viewWidth = textureView.width
-        val viewHeight = textureView.height
-        if (viewWidth <= 0 || viewHeight <= 0) return
-
-        val viewRatio = viewWidth.toDouble() / viewHeight
-        val videoRatio = videoWidth.toDouble() / videoHeight
-
-        var scaleX = 1f
-        var scaleY = 1f
-
-        if (videoRatio > viewRatio) {
-            scaleY = (viewRatio / videoRatio).toFloat()
-        } else {
-            scaleX = (videoRatio / viewRatio).toFloat()
-        }
-
-        val pivotX = viewWidth / 2f
-        val pivotY = viewHeight / 2f
-
-        val matrix = Matrix()
-        matrix.setScale(scaleX, scaleY, pivotX, pivotY)
-        mainHandler.post {
-            textureView.setTransform(matrix)
-        }
-    }
-
-    override fun onPrepared(mp: MediaPlayer) {
-        try {
-            if (mp.videoWidth > 0 && mp.videoHeight > 0) {
-                adjustAspectRatio(mp.videoWidth, mp.videoHeight)
-            }
-            mp.start()
-            isPlaying = true
-            mainHandler.post(frameCaptureRunnable)
-        } catch (e: Exception) {
-            onError("Failed to play RTSP stream: ${e.localizedMessage}")
-        }
-    }
-
-    override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
-        isPlaying = false
-        mainHandler.removeCallbacks(frameCaptureRunnable)
-        isProcessingFrame.set(false)
-        onError("RTSP playback error (what: $what, extra: $extra)")
-        return true
-    }
 }
