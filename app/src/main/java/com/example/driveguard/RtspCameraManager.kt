@@ -29,8 +29,25 @@ class RtspCameraManager(
     private var isPlaying = false
     private val isProcessingFrame = AtomicBoolean(false)
     private var lastFrameTimeMs = 0L
+    private var lastSurfaceUpdateTimeMs = 0L
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val watchdogRunnable = object : Runnable {
+        override fun run() {
+            if (isPlaying) {
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (lastSurfaceUpdateTimeMs > 0 && now - lastSurfaceUpdateTimeMs > 4000L) {
+                    val url = currentUrl
+                    if (url != null) {
+                        stop()
+                        start(url)
+                        return
+                    }
+                }
+                mainHandler.postDelayed(this, 2000L)
+            }
+        }
+    }
 
     fun start(rtspUrl: String) {
         stop()
@@ -46,7 +63,9 @@ class RtspCameraManager(
 
     fun stop() {
         isPlaying = false
+        mainHandler.removeCallbacks(watchdogRunnable)
         lastFrameTimeMs = 0L
+        lastSurfaceUpdateTimeMs = 0L
         isProcessingFrame.set(false)
         try {
             mediaPlayer?.apply {
@@ -68,13 +87,20 @@ class RtspCameraManager(
         val url = currentUrl ?: return
         try {
             surface = Surface(surfaceTexture)
+            val parsedUri = Uri.parse(url)
+            val uriWithTcp = if (parsedUri.getQueryParameter("rtsp_transport") == null) {
+                parsedUri.buildUpon().appendQueryParameter("rtsp_transport", "tcp").build()
+            } else {
+                parsedUri
+            }
+
             mediaPlayer = MediaPlayer().apply {
                 setSurface(surface)
                 val headers = mapOf(
                     "rtsp_transport" to "tcp",
                     "rtsp_flags" to "prefer_tcp"
                 )
-                setDataSource(textureView.context, Uri.parse(url), headers)
+                setDataSource(textureView.context, uriWithTcp, headers)
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
@@ -107,6 +133,7 @@ class RtspCameraManager(
     override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {
         if (!isPlaying || !textureView.isAvailable) return
         val now = android.os.SystemClock.elapsedRealtime()
+        lastSurfaceUpdateTimeMs = now
         if (now - lastFrameTimeMs >= 100L) { // ~10 FPS frame sampling
             if (isProcessingFrame.compareAndSet(false, true)) {
                 lastFrameTimeMs = now
@@ -172,6 +199,9 @@ class RtspCameraManager(
             }
             mp.start()
             isPlaying = true
+            lastSurfaceUpdateTimeMs = android.os.SystemClock.elapsedRealtime()
+            mainHandler.removeCallbacks(watchdogRunnable)
+            mainHandler.postDelayed(watchdogRunnable, 2000L)
         } catch (e: Exception) {
             onError("Failed to play RTSP stream: ${e.localizedMessage}")
         }
@@ -179,6 +209,7 @@ class RtspCameraManager(
 
     override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
         isPlaying = false
+        mainHandler.removeCallbacks(watchdogRunnable)
         isProcessingFrame.set(false)
         onError("RTSP playback error (what: $what, extra: $extra)")
         return true
