@@ -6,6 +6,8 @@ import android.graphics.Matrix
 import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
 import android.os.SystemClock
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Size
 import android.view.View
 import android.widget.SeekBar
@@ -28,11 +30,14 @@ import kotlin.math.atan
 private const val DEFAULT_RTSP_URL = "rtsp://192.168.0.1:554/livestream/12"
 private const val PREFS_NAME = "driveguard_prefs"
 private const val KEY_RTSP_URL = "saved_rtsp_url"
+private const val KEY_SAVE_VIDEO_ENABLED = "save_video_enabled"
+private const val KEY_SAVE_VIDEO_PATH = "save_video_path"
 
 class MainActivity : AppCompatActivity() {
     private lateinit var b: ActivityMainBinding
     private lateinit var alerts: AlertManager
     private lateinit var speed: SpeedProvider
+    private lateinit var videoRecorder: ObjectVideoRecorder
     private var detector: HazardDetector? = null
     private val analyzer = HazardAnalyzer()
     private val exec = Executors.newSingleThreadExecutor()
@@ -57,6 +62,7 @@ class MainActivity : AppCompatActivity() {
         speed = SpeedProvider(this)
         setupThresholdSliders()
         setupRtspControls()
+        setupVideoRecordingControls()
         try {
             detector = HazardDetector(this)
         } catch (e: Exception) {
@@ -66,6 +72,42 @@ class MainActivity : AppCompatActivity() {
             return
         }
         perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
+    private fun setupVideoRecordingControls() {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val defaultPath = getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES)?.absolutePath
+            ?: (filesDir.absolutePath + "/movies")
+        val initialEnabled = prefs.getBoolean(KEY_SAVE_VIDEO_ENABLED, false)
+        val initialPath = prefs.getString(KEY_SAVE_VIDEO_PATH, defaultPath) ?: defaultPath
+
+        videoRecorder = ObjectVideoRecorder(
+            isEnabled = initialEnabled,
+            saveDirectoryPath = initialPath,
+            onRecordingStateChanged = { isRec, _ ->
+                runOnUiThread {
+                    b.recordingIndicator.visibility = if (isRec) View.VISIBLE else View.GONE
+                }
+            }
+        )
+
+        b.saveVideoCheckBox.isChecked = initialEnabled
+        b.saveVideoPathInput.setText(initialPath)
+
+        b.saveVideoCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            videoRecorder.isEnabled = isChecked
+            prefs.edit().putBoolean(KEY_SAVE_VIDEO_ENABLED, isChecked).apply()
+        }
+
+        b.saveVideoPathInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                val newPath = s?.toString()?.trim().orEmpty()
+                videoRecorder.saveDirectoryPath = newPath
+                prefs.edit().putString(KEY_SAVE_VIDEO_PATH, newPath).apply()
+            }
+        })
     }
 
     private fun setupRtspControls() {
@@ -276,6 +318,7 @@ class MainActivity : AppCompatActivity() {
         val now = SystemClock.elapsedRealtime()
         val spd = speed.current
         val dets = det.detect(bmp)
+        videoRecorder.processFrame(bmp, dets, now)
         val hazards = analyzer.analyze(bmp, dets, spd, now)
         alerts.handle(hazards)
         if (lastTs != 0L) fps = 0.9f * fps + 0.1f * (1000f / (now - lastTs).coerceAtLeast(1L))
@@ -309,6 +352,7 @@ class MainActivity : AppCompatActivity() {
         rtspManager?.stop()
         speed.stop()
         alerts.shutdown()
+        videoRecorder.stopRecording()
         exec.execute { detector?.close() } // runs after any in-flight frame
         exec.shutdown()
     }

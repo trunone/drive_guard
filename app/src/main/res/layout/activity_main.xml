@@ -204,6 +204,51 @@
                 android:max="60"
                 android:min="5"
                 android:progress="20" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:background="#44FFFFFF" />
+
+            <CheckBox
+                android:id="@+id/saveVideoCheckBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Save Video on Object (Person/Car)"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/saveVideoPathLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Save Location:"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/saveVideoPathInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="/storage/emulated/0/Movies/DriveGuard"
+                android:inputType="text"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#AAAAAA"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/recordingIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="● REC"
+                android:textColor="#FF1744"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
         </LinearLayout>
     </ScrollView>
 </FrameLayout>
