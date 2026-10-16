@@ -3,7 +3,7 @@ package com.example.driveguard
 import android.graphics.RectF
 
 enum class Severity { INFO, WARNING, CRITICAL }
-enum class LightColor { RED, YELLOW, GREEN, UNKNOWN }
+enum class LightColor { RED, YELLOW, GREEN, GREEN_LEFT, GREEN_RIGHT, UNKNOWN }
 
 /** A detection; box is in upright-frame pixel coordinates. */
 data class Det(val label: String, val score: Float, val box: RectF)
