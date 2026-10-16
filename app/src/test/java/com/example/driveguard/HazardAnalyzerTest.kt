@@ -42,6 +42,49 @@ class HazardAnalyzerTest {
     }
 
     @Test
+    fun testLightClassifierYellow() {
+        val bmp = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
+        for (x in 10 until 50) {
+            for (y in 10 until 50) {
+                bmp.setPixel(x, y, Color.YELLOW)
+            }
+        }
+        val box = RectF(10f, 10f, 50f, 50f)
+        val color = LightClassifier.classify(bmp, box)
+        assertEquals(LightColor.YELLOW, color)
+    }
+
+    @Test
+    fun testLightClassifierVerticalSpatialWeighting() {
+        // Vertical traffic light box [10, 10, 30, 70] (width 20, height 60)
+        val bmp = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
+        // Red bulb at top: y in 10..25
+        for (x in 10 until 30) {
+            for (y in 10 until 25) {
+                bmp.setPixel(x, y, Color.RED)
+            }
+        }
+        val box = RectF(10f, 10f, 30f, 70f)
+        val color = LightClassifier.classify(bmp, box)
+        assertEquals(LightColor.RED, color)
+    }
+
+    @Test
+    fun testLightClassifierOverexposedBrightCenter() {
+        val bmp = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
+        // Bright overexposed red bulb (R: 255, G: 210, B: 210)
+        val brightRed = Color.rgb(255, 210, 210)
+        for (x in 10 until 50) {
+            for (y in 10 until 50) {
+                bmp.setPixel(x, y, brightRed)
+            }
+        }
+        val box = RectF(10f, 10f, 50f, 50f)
+        val color = LightClassifier.classify(bmp, box)
+        assertEquals(LightColor.RED, color)
+    }
+
+    @Test
     fun testLightClassifierBoundaryTopRightCoercion() {
         val bmp = Bitmap.createBitmap(100, 200, Bitmap.Config.ARGB_8888)
         // Rect near bottom-right edge of bitmap
