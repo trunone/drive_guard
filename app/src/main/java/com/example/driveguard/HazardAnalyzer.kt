@@ -69,7 +69,7 @@ class HazardAnalyzer {
         }
 
         // 3) Traffic light state (majority vote over recent frames to avoid flicker)
-        val tlCandidates = dets.filter { it.label == "traffic light" && cx(it) in 0.15f..0.85f && it.box.centerY() < 0.6f * h }
+        val tlCandidates = dets.filter { it.label == "traffic light" && cx(it) in 0.05f..0.95f && it.box.centerY() < 0.6f * h }
             .sortedByDescending { it.box.height() * it.box.width() }
         var chosenColor = LightColor.UNKNOWN
         var chosenTl: Det? = null
@@ -86,17 +86,25 @@ class HazardAnalyzer {
         }
         colors.addLast(chosenColor)
         while (colors.size > 7) colors.removeFirst()
-        val stable = listOf(LightColor.RED, LightColor.YELLOW, LightColor.GREEN)
+        val stable = listOf(LightColor.RED, LightColor.YELLOW, LightColor.GREEN, LightColor.GREEN_LEFT, LightColor.GREEN_RIGHT)
             .maxByOrNull { c -> colors.count { it == c } }
             ?.takeIf { s -> colors.count { it == s } >= 4 }
         val fast = (speed ?: 0f) > 6f
+        val lightX = chosenTl?.let { cx(it) } ?: 0.5f
+        val posDesc = when {
+            lightX < 0.35f -> " on left"
+            lightX > 0.65f -> " on right"
+            else -> " ahead"
+        }
         when (stable) {
             LightColor.RED -> out += Hazard(
-                "red", if (fast) "Red light ahead, slow down" else "Red light ahead",
+                "red", if (fast) "Red light$posDesc, slow down" else "Red light$posDesc",
                 if (fast) Severity.CRITICAL else Severity.WARNING, chosenTl?.box
             )
-            LightColor.YELLOW -> out += Hazard("yellow", "Yellow light", Severity.WARNING, chosenTl?.box)
-            LightColor.GREEN -> out += Hazard("green", "Green light", Severity.INFO, chosenTl?.box)
+            LightColor.YELLOW -> out += Hazard("yellow", "Yellow light$posDesc", Severity.WARNING, chosenTl?.box)
+            LightColor.GREEN -> out += Hazard("green", "Green light$posDesc", Severity.INFO, chosenTl?.box)
+            LightColor.GREEN_LEFT -> out += Hazard("green_left", "Green left arrow$posDesc", Severity.INFO, chosenTl?.box)
+            LightColor.GREEN_RIGHT -> out += Hazard("green_right", "Green right arrow$posDesc", Severity.INFO, chosenTl?.box)
             else -> {}
         }
 
@@ -184,10 +192,11 @@ object LightClassifier {
                         else -> 1.0f
                     }
                 } else {
+                    // For horizontal traffic lights, red is standard on left, green on right; or green on either end for left/right turn green arrows.
                     when (detectedColor) {
-                        LightColor.RED -> if (normX < 0.45f) 2.0f else 0.4f
-                        LightColor.YELLOW -> if (normX in 0.25f..0.75f) 2.0f else 0.4f
-                        LightColor.GREEN -> if (normX > 0.55f) 2.0f else 0.4f
+                        LightColor.RED -> if (normX < 0.45f) 2.0f else 0.5f
+                        LightColor.YELLOW -> if (normX in 0.25f..0.75f) 2.0f else 0.5f
+                        LightColor.GREEN -> if (normX > 0.55f || normX < 0.45f) 1.8f else 0.5f
                         else -> 1.0f
                     }
                 }
@@ -203,13 +212,70 @@ object LightClassifier {
         }
 
         val maxScore = maxOf(rScore, yScore, gScore)
-        if (maxScore < 3.0f) return LightColor.UNKNOWN
+        if (maxScore < 2.0f) return LightColor.UNKNOWN
 
-        return when {
-            rScore == maxScore && rScore > yScore * 1.25f && rScore > gScore * 1.25f -> LightColor.RED
-            gScore == maxScore && gScore > rScore * 1.25f && gScore > yScore * 1.25f -> LightColor.GREEN
-            yScore == maxScore && yScore > rScore * 1.15f && yScore > gScore * 1.15f -> LightColor.YELLOW
-            else -> LightColor.UNKNOWN
+        if (rScore == maxScore && rScore > yScore * 1.2f && rScore > gScore * 1.2f) {
+            return LightColor.RED
         }
+        if (yScore == maxScore && yScore > rScore * 1.15f && yScore > gScore * 1.15f) {
+            return LightColor.YELLOW
+        }
+        if (gScore == maxScore && gScore > rScore * 1.2f && gScore > yScore * 1.2f) {
+            // Determine if the green light is a left or right turn arrow or standard green
+            // by inspecting green pixel spatial distribution (left vs middle vs right subregions)
+            var leftGreenPixels = 0
+            var rightGreenPixels = 0
+            var midGreenPixels = 0
+
+            for (yIdx in 0 until gridH) {
+                for (xIdx in 0 until gridW) {
+                    val p = px[yIdx * gridW + xIdx]
+                    Color.colorToHSV(p, hsv)
+                    val hue = hsv[0]
+                    val sat = hsv[1]
+                    val valB = hsv[2]
+                    val gComp = Color.green(p)
+                    val rComp = Color.red(p)
+                    val bComp = Color.blue(p)
+
+                    val isGreenPixel = valB >= 0.50f && ((sat >= 0.30f && hue in 80f..190f) ||
+                            (valB >= 0.75f && gComp > 160 && gComp > rComp + 20 && gComp > bComp + 20))
+
+                    if (isGreenPixel) {
+                        val normX = (xIdx + 0.5f) / gridW
+                        when {
+                            normX < 0.38f -> leftGreenPixels++
+                            normX > 0.62f -> rightGreenPixels++
+                            else -> midGreenPixels++
+                        }
+                    }
+                }
+            }
+
+            val totalGreen = leftGreenPixels + rightGreenPixels + midGreenPixels
+            if (totalGreen >= 3) {
+                if (!isVertical) {
+                    // For horizontal signal heads
+                    if (leftGreenPixels > totalGreen * 0.55f && leftGreenPixels > rightGreenPixels * 2) {
+                        return LightColor.GREEN_LEFT
+                    }
+                    if (rightGreenPixels > totalGreen * 0.55f && rightGreenPixels > leftGreenPixels * 2) {
+                        return LightColor.GREEN_RIGHT
+                    }
+                } else {
+                    // For vertical signal heads, arrow signals often have distinct horizontal asymmetry or offset
+                    if (leftGreenPixels > rightGreenPixels + midGreenPixels + 2 && leftGreenPixels > rightGreenPixels * 2) {
+                        return LightColor.GREEN_LEFT
+                    }
+                    if (rightGreenPixels > leftGreenPixels + midGreenPixels + 2 && rightGreenPixels > leftGreenPixels * 2) {
+                        return LightColor.GREEN_RIGHT
+                    }
+                }
+            }
+
+            return LightColor.GREEN
+        }
+
+        return LightColor.UNKNOWN
     }
 }
