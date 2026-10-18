@@ -27,6 +27,11 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     androidResources { noCompress += "tflite" }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {

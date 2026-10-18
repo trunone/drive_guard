@@ -25,6 +25,15 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Traffic Light & Emergency Vehicle Compose Dashboard -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/trafficLightComposeView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="115dp"
+        android:elevation="7dp" />
+
     <!-- Top Banner Hazard Alert (Floating Pill Card) -->
     <LinearLayout
         android:id="@+id/bannerCard"
