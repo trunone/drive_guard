@@ -59,15 +59,23 @@ class MainActivity : AppCompatActivity() {
         setupThresholdSliders()
         setupRtspControls()
         setupVisionToggle()
+        setupDrawerControls()
         try {
             detector = HazardDetector(this)
         } catch (e: Exception) {
-            b.banner.visibility = View.VISIBLE
-            b.banner.setBackgroundColor(0xDDD32F2F.toInt())
+            b.bannerCard.visibility = View.VISIBLE
+            b.bannerCard.setBackgroundResource(R.drawable.bg_status_pill)
             b.banner.text = "Model missing: add ${HazardDetector.MODEL} to app/src/main/assets"
             return
         }
         perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
+    private fun setupDrawerControls() {
+        b.btnToggleSettings.setOnClickListener {
+            val isVisible = b.thresholdsScrollView.visibility == View.VISIBLE
+            b.thresholdsScrollView.visibility = if (isVisible) View.GONE else View.VISIBLE
+        }
     }
 
     private fun setupVisionToggle() {
@@ -77,7 +85,7 @@ class MainActivity : AppCompatActivity() {
             if (!isChecked) {
                 runOnUiThread {
                     b.overlay.clear()
-                    b.banner.visibility = View.GONE
+                    b.bannerCard.visibility = View.GONE
                     b.status.text = "Vision functions disabled"
                 }
             }
@@ -291,7 +299,7 @@ class MainActivity : AppCompatActivity() {
         if (!isVisionEnabled) {
             runOnUiThread {
                 b.overlay.clear()
-                b.banner.visibility = View.GONE
+                b.bannerCard.visibility = View.GONE
             }
             return
         }
@@ -311,17 +319,18 @@ class MainActivity : AppCompatActivity() {
         b.overlay.show(res)
         val top = res.hazards.firstOrNull()
         if (top == null) {
-            b.banner.visibility = View.GONE
+            b.bannerCard.visibility = View.GONE
         } else {
-            b.banner.visibility = View.VISIBLE
+            b.bannerCard.visibility = View.VISIBLE
             b.banner.text = top.message
-            b.banner.setBackgroundColor(
-                when (top.severity) {
-                    Severity.CRITICAL -> 0xDDD32F2F
-                    Severity.WARNING -> 0xDDF57C00
-                    Severity.INFO -> 0xDD388E3C
-                }.toInt()
-            )
+            val bgDrawable = ContextCompat.getDrawable(this, R.drawable.bg_status_pill)?.mutate()
+            val tintColor = when (top.severity) {
+                Severity.CRITICAL -> 0xEEEF4444.toInt()
+                Severity.WARNING -> 0xEEF59E0B.toInt()
+                Severity.INFO -> 0xEE10B981.toInt()
+            }
+            bgDrawable?.setTint(tintColor)
+            b.bannerCard.background = bgDrawable
         }
         val kmh = spd?.let { "%.0f km/h".format(it * 3.6f) } ?: "-- km/h"
         b.status.text = "$kmh  ·  ${"%.0f".format(fps)} fps"
