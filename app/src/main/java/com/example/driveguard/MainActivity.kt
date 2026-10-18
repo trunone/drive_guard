@@ -20,8 +20,19 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.example.driveguard.data.AppDatabase
 import com.example.driveguard.databinding.ActivityMainBinding
+import com.example.driveguard.repository.LocationRepository
+import com.example.driveguard.ui.CameraAlertOverlay
+import com.example.driveguard.ui.CameraAlertViewModel
+import com.example.driveguard.util.AudioChimePlayer
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 import kotlin.math.atan
 
@@ -43,8 +54,15 @@ class MainActivity : AppCompatActivity() {
     private var rtspConnected = false
     private var rtspManager: RtspCameraManager? = null
 
+    private lateinit var locationRepository: LocationRepository
+    private lateinit var cameraAlertViewModel: CameraAlertViewModel
+    private lateinit var audioChimePlayer: AudioChimePlayer
+
     private val perms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
-        if (r[Manifest.permission.ACCESS_FINE_LOCATION] == true) speed.start()
+        if (r[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            speed.start()
+            locationRepository.startLocationUpdates()
+        }
         if (!isRtspMode && r[Manifest.permission.CAMERA] == true) startCamera()
     }
 
@@ -55,6 +73,26 @@ class MainActivity : AppCompatActivity() {
         b.preview.scaleType = PreviewView.ScaleType.FIT_CENTER
         alerts = AlertManager(this)
         speed = SpeedProvider(this)
+
+        val db = AppDatabase.getInstance(this)
+        val cameraDao = db.enforcementCameraDao()
+        locationRepository = LocationRepository(this, cameraDao)
+        cameraAlertViewModel = CameraAlertViewModel(locationRepository)
+        audioChimePlayer = AudioChimePlayer(this)
+
+        b.cameraAlertComposeView.setContent {
+            val alertState by cameraAlertViewModel.alertState.collectAsStateWithLifecycle()
+            CameraAlertOverlay(alertState = alertState)
+        }
+
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cameraAlertViewModel.audioChimeEvent.collect {
+                    audioChimePlayer.playChime()
+                }
+            }
+        }
+
         setupThresholdSliders()
         setupRtspControls()
         try {
@@ -308,6 +346,8 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         rtspManager?.stop()
         speed.stop()
+        locationRepository.stopLocationUpdates()
+        audioChimePlayer.release()
         alerts.shutdown()
         exec.execute { detector?.close() } // runs after any in-flight frame
         exec.shutdown()
