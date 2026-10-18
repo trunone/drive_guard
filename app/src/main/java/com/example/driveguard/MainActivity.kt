@@ -1,6 +1,7 @@
 package com.example.driveguard
 
 import android.Manifest
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.hardware.camera2.CameraCharacteristics
@@ -21,7 +22,12 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.example.driveguard.data.AppDatabase
+import com.example.driveguard.data.TrafficLightRepository
 import com.example.driveguard.databinding.ActivityMainBinding
+import com.example.driveguard.service.LocationTrackingService
+import com.example.driveguard.ui.TrafficLightDashboard
+import com.example.driveguard.ui.TrafficLightViewModel
 import java.util.concurrent.Executors
 import kotlin.math.atan
 
@@ -45,8 +51,18 @@ class MainActivity : AppCompatActivity() {
     private var rtspManager: RtspCameraManager? = null
 
     private val perms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
-        if (r[Manifest.permission.ACCESS_FINE_LOCATION] == true) speed.start()
-        if (!isRtspMode && r[Manifest.permission.CAMERA] == true) startCamera()
+        if (r[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            speed.start()
+            try {
+                val serviceIntent = Intent(this, LocationTrackingService::class.java)
+                ContextCompat.startForegroundService(this, serviceIntent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        if (!isRtspMode && isVisionEnabled && r[Manifest.permission.CAMERA] == true) {
+            startCamera()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,15 +76,23 @@ class MainActivity : AppCompatActivity() {
         setupRtspControls()
         setupVisionToggle()
         setupDrawerControls()
+        setupTrafficDashboard()
         try {
             detector = HazardDetector(this)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             b.bannerCard.visibility = View.VISIBLE
-            b.bannerCard.setBackgroundResource(R.drawable.bg_status_pill)
             b.banner.text = "Model missing: add ${HazardDetector.MODEL} to app/src/main/assets"
-            return
         }
         perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
+    private fun setupTrafficDashboard() {
+        val db = AppDatabase.getInstance(applicationContext)
+        val repository = TrafficLightRepository(db.trafficLightDao())
+        val viewModel = TrafficLightViewModel(repository)
+        b.trafficLightComposeView.setContent {
+            TrafficLightDashboard(viewModel = viewModel)
+        }
     }
 
     private fun setupDrawerControls() {
@@ -85,8 +109,33 @@ class MainActivity : AppCompatActivity() {
             if (!isChecked) {
                 runOnUiThread {
                     b.overlay.clear()
+                    b.overlay.visibility = View.GONE
+                    b.preview.visibility = View.GONE
+                    b.rtspPreview.visibility = View.GONE
                     b.bannerCard.visibility = View.GONE
+                    stopCameraX()
+                    rtspManager?.stop()
                     b.status.text = "Vision functions disabled"
+                }
+            } else {
+                runOnUiThread {
+                    b.overlay.visibility = View.VISIBLE
+                    if (isRtspMode) {
+                        b.preview.visibility = View.GONE
+                        b.rtspPreview.visibility = View.VISIBLE
+                        if (rtspConnected) {
+                            val input = b.rtspUrlInput.text.toString()
+                            val parsedUrl = RtspUtils.parseRtspUrl(input)
+                            if (parsedUrl != null) {
+                                rtspManager?.start(parsedUrl)
+                            }
+                        }
+                    } else {
+                        b.rtspPreview.visibility = View.GONE
+                        b.preview.visibility = View.VISIBLE
+                        startCamera()
+                    }
+                    b.status.text = ""
                 }
             }
         }
@@ -115,18 +164,22 @@ class MainActivity : AppCompatActivity() {
             if (isRtspMode) {
                 b.toggleSourceBtn.text = "Source: RTSP"
                 b.preview.visibility = View.GONE
-                b.rtspPreview.visibility = View.VISIBLE
+                if (isVisionEnabled) {
+                    b.rtspPreview.visibility = View.VISIBLE
+                }
                 b.rtspInputContainer.visibility = View.VISIBLE
                 stopCameraX()
             } else {
                 b.toggleSourceBtn.text = "Source: Camera"
                 b.rtspPreview.visibility = View.GONE
                 b.rtspInputContainer.visibility = View.GONE
-                b.preview.visibility = View.VISIBLE
                 rtspManager?.stop()
                 rtspConnected = false
                 b.rtspConnectBtn.text = "Connect"
-                startCamera()
+                if (isVisionEnabled) {
+                    b.preview.visibility = View.VISIBLE
+                    startCamera()
+                }
             }
         }
 
@@ -223,6 +276,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startCamera() {
+        if (!isVisionEnabled) return
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
             val provider = future.get()
