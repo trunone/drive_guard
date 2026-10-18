@@ -15,6 +15,7 @@ class OverlayView(c: Context, a: AttributeSet?) : View(c, a) {
     private val t = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 30f }
 
     fun show(r: FrameResult) { res = r; invalidate() }
+    fun clear() { res = null; invalidate() }
 
     override fun onDraw(c: Canvas) {
         val r = res ?: return

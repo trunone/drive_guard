@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private var lastTs = 0L
     private var fps = 0f
 
+    var isVisionEnabled = true
     private var isRtspMode = false
     private var rtspConnected = false
     private var rtspManager: RtspCameraManager? = null
@@ -57,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         speed = SpeedProvider(this)
         setupThresholdSliders()
         setupRtspControls()
+        setupVisionToggle()
         try {
             detector = HazardDetector(this)
         } catch (e: Exception) {
@@ -66,6 +68,20 @@ class MainActivity : AppCompatActivity() {
             return
         }
         perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
+    private fun setupVisionToggle() {
+        b.toggleVisionSwitch.isChecked = isVisionEnabled
+        b.toggleVisionSwitch.setOnCheckedChangeListener { _, isChecked ->
+            isVisionEnabled = isChecked
+            if (!isChecked) {
+                runOnUiThread {
+                    b.overlay.clear()
+                    b.banner.visibility = View.GONE
+                    b.status.text = "Vision functions disabled"
+                }
+            }
+        }
     }
 
     private fun setupRtspControls() {
@@ -272,6 +288,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun processBitmap(bmp: Bitmap) {
+        if (!isVisionEnabled) {
+            runOnUiThread {
+                b.overlay.clear()
+                b.banner.visibility = View.GONE
+            }
+            return
+        }
         val det = detector ?: return
         val now = SystemClock.elapsedRealtime()
         val spd = speed.current
