@@ -31,6 +31,15 @@
         android:orientation="vertical"
         android:padding="8dp">
 
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/toggleVisionSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="Vision Functions"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
         <Button
             android:id="@+id/toggleSourceBtn"
             android:layout_width="wrap_content"
