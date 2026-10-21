@@ -1,7 +1,10 @@
 package com.example.driveguard
 
+import com.example.driveguard.sensor.GForceData
+import com.example.driveguard.sensor.GForcePoint
 import com.example.driveguard.sensor.GForceSensorManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.sqrt
 
@@ -132,5 +135,19 @@ class GForceSensorManagerTest {
         assertEquals(0.6f, result.gy, 0.01f)
         assertEquals(0.0f, result.gx, 0.01f)
         assertEquals(0.6f, result.gXyMag, 0.01f)
+    }
+
+    @Test
+    fun testTrajectoryDataModel_storesTimeAndGForce() {
+        val now = 10000L
+        val p1 = GForcePoint(gx = 0.1f, gy = 0.2f, timestampMs = now - 5000L)
+        val p2 = GForcePoint(gx = 0.3f, gy = 0.4f, timestampMs = now)
+
+        val data = GForceData(trajectory = listOf(p1, p2))
+
+        assertEquals(2, data.trajectory.size)
+        assertEquals(0.1f, data.trajectory[0].gx, 0.001f)
+        assertEquals(0.3f, data.trajectory[1].gx, 0.001f)
+        assertTrue(data.trajectory[1].timestampMs - data.trajectory[0].timestampMs == 5000L)
     }
 }

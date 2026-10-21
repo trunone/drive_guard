@@ -5,6 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.SystemClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +42,9 @@ class GForceSensorManager(context: Context) : SensorEventListener {
     private var peakZMax = 1.0f
     private var peakZMin = 1.0f
 
+    private val trajectoryBuffer = ArrayDeque<GForcePoint>()
+    private var lastPointTs = 0L
+
     private var isListening = false
 
     fun start() {
@@ -70,10 +74,12 @@ class GForceSensorManager(context: Context) : SensorEventListener {
         peakXy = _gForceData.value.gXyMag
         peakZMax = _gForceData.value.gz
         peakZMin = _gForceData.value.gz
+        trajectoryBuffer.clear()
         _gForceData.value = _gForceData.value.copy(
             peakXy = peakXy,
             peakZMax = peakZMax,
-            peakZMin = peakZMin
+            peakZMin = peakZMin,
+            trajectory = emptyList()
         )
     }
 
@@ -122,6 +128,19 @@ class GForceSensorManager(context: Context) : SensorEventListener {
                 peakZMax = max(peakZMax, smoothedGz)
                 peakZMin = min(peakZMin, smoothedGz)
 
+                val nowMs = SystemClock.elapsedRealtime()
+
+                // Retain only points from the last 10 seconds (10,000 ms)
+                while (trajectoryBuffer.isNotEmpty() && nowMs - trajectoryBuffer.first().timestampMs > 10_000L) {
+                    trajectoryBuffer.removeFirst()
+                }
+
+                // Throttle trajectory sampling slightly (every ~50ms) for smooth 20Hz trajectory point stream
+                if (nowMs - lastPointTs >= 50L) {
+                    trajectoryBuffer.addLast(GForcePoint(smoothedGx, smoothedGy, nowMs))
+                    lastPointTs = nowMs
+                }
+
                 _gForceData.value = GForceData(
                     gx = smoothedGx,
                     gy = smoothedGy,
@@ -129,7 +148,8 @@ class GForceSensorManager(context: Context) : SensorEventListener {
                     gXyMag = xyMag,
                     peakXy = peakXy,
                     peakZMax = peakZMax,
-                    peakZMin = peakZMin
+                    peakZMin = peakZMin,
+                    trajectory = trajectoryBuffer.toList()
                 )
             }
         }

@@ -22,11 +22,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import android.os.SystemClock
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.driveguard.sensor.GForceData
+import com.example.driveguard.sensor.GForcePoint
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
@@ -110,6 +112,7 @@ fun GForceMeterCard(
                     gx = data.gx,
                     gy = data.gy,
                     peakXy = data.peakXy,
+                    trajectory = data.trajectory,
                     modifier = Modifier.size(140.dp)
                 )
 
@@ -164,6 +167,7 @@ fun GForceRadarChart(
     gx: Float,
     gy: Float,
     peakXy: Float,
+    trajectory: List<GForcePoint> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     Canvas(modifier = modifier) {
@@ -234,6 +238,33 @@ fun GForceRadarChart(
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 4f), 0f)
                 )
             )
+        }
+
+        // 10-second Trajectory Trail (Older points have lighter/fainter line color)
+        if (trajectory.size >= 2) {
+            val nowMs = SystemClock.elapsedRealtime()
+            for (i in 0 until trajectory.size - 1) {
+                val p1 = trajectory[i]
+                val p2 = trajectory[i + 1]
+
+                val ageMs = (nowMs - p2.timestampMs).coerceIn(0L, 10_000L)
+                val ageRatio = ageMs / 10_000f // 0.0 = newest/now, 1.0 = 10s old
+                // Newest points -> alpha 0.85f (bright cyan), 10s old -> alpha 0.12f (faint light color)
+                val lineAlpha = (0.85f * (1.0f - ageRatio)).coerceIn(0.12f, 0.85f)
+                val lineColor = Color(0xFF38BDF8).copy(alpha = lineAlpha)
+
+                val x1 = center.x + (p1.gx / maxGScale) * maxRadius
+                val y1 = center.y - (p1.gy / maxGScale) * maxRadius
+                val x2 = center.x + (p2.gx / maxGScale) * maxRadius
+                val y2 = center.y - (p2.gy / maxGScale) * maxRadius
+
+                drawLine(
+                    color = lineColor,
+                    start = Offset(x1, y1),
+                    end = Offset(x2, y2),
+                    strokeWidth = 2.0f
+                )
+            }
         }
 
         // Live G Vector Line & Dot
