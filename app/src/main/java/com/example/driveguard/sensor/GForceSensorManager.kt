@@ -98,12 +98,12 @@ class GForceSensorManager(context: Context) : SensorEventListener {
                 val ay = event.values[1]
                 val az = event.values[2]
 
-                // If no hardware gravity sensor is active, estimate gravity using low-pass filter
+                // If no hardware gravity sensor is active, estimate gravity vector (-a) using low-pass filter
                 if (!hasGravitySensorFix) {
                     val alpha = 0.8f
-                    gravityValues[0] = alpha * gravityValues[0] + (1 - alpha) * ax
-                    gravityValues[1] = alpha * gravityValues[1] + (1 - alpha) * ay
-                    gravityValues[2] = alpha * gravityValues[2] + (1 - alpha) * az
+                    gravityValues[0] = alpha * gravityValues[0] + (1 - alpha) * (-ax)
+                    gravityValues[1] = alpha * gravityValues[1] + (1 - alpha) * (-ay)
+                    gravityValues[2] = alpha * gravityValues[2] + (1 - alpha) * (-az)
                 }
 
                 val result = computeGForce(

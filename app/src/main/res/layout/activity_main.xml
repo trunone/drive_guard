@@ -25,31 +25,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Traffic Light & Emergency Vehicle Compose Dashboard -->
-    <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/trafficLightComposeView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="75dp"
-        android:elevation="7dp" />
-
-    <!-- G-Force Meter Radar & Z-Axis Compose HUD -->
-    <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/gForceComposeView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_margin="12dp"
-        android:elevation="7dp" />
-
     <!-- Top Banner Hazard Alert (Floating Pill Card) -->
     <LinearLayout
         android:id="@+id/bannerCard"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
         android:background="@drawable/bg_status_pill"
         android:elevation="8dp"
         android:orientation="horizontal"
@@ -67,87 +49,110 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Top-Left Floating Control Card (Source & Vision Toggles) -->
+    <!-- Vertical Stacked Container for Top HUD Cards in Portrait -->
     <LinearLayout
-        android:id="@+id/rtspControlPanel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:layout_margin="12dp"
-        android:background="@drawable/bg_hud_card"
-        android:elevation="6dp"
-        android:orientation="vertical"
-        android:padding="12dp">
+        android:orientation="vertical">
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/toggleVisionSwitch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checked="true"
-            android:text="Vision AI"
-            android:textColor="#F3F4F6"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/toggleGForceSwitch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:checked="true"
-            android:text="G-Force Meter"
-            android:textColor="#F3F4F6"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
-        <Button
-            android:id="@+id/toggleSourceBtn"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:layout_marginTop="6dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:paddingHorizontal="12dp"
-            android:text="Source: Camera"
-            android:textColor="#E5E7EB"
-            android:textSize="12sp"
-            app:strokeColor="#4B5563" />
-
+        <!-- Top-Left Floating Control Card (Source & Vision Toggles) -->
         <LinearLayout
-            android:id="@+id/rtspInputContainer"
+            android:id="@+id/rtspControlPanel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal"
-            android:visibility="gone">
+            android:background="@drawable/bg_hud_card"
+            android:elevation="6dp"
+            android:orientation="vertical"
+            android:padding="12dp">
 
-            <EditText
-                android:id="@+id/rtspUrlInput"
-                android:layout_width="220dp"
-                android:layout_height="36dp"
-                android:background="@drawable/bg_input_field"
-                android:hint="rtsp://192.168.0.1:554/livestream"
-                android:inputType="textUri"
-                android:paddingHorizontal="10dp"
-                android:textColor="#FFFFFF"
-                android:textColorHint="#9CA3AF"
-                android:textSize="12sp" />
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/toggleVisionSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="Vision AI"
+                android:textColor="#F3F4F6"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/toggleGForceSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:checked="true"
+                android:text="G-Force Meter"
+                android:textColor="#F3F4F6"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
             <Button
-                android:id="@+id/rtspConnectBtn"
+                android:id="@+id/toggleSourceBtn"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:layout_marginStart="6dp"
-                android:background="@drawable/bg_primary_button"
+                android:layout_marginTop="6dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:paddingHorizontal="12dp"
-                android:text="Connect"
-                android:textColor="#FFFFFF"
+                android:text="Source: Camera"
+                android:textColor="#E5E7EB"
                 android:textSize="12sp"
-                app:backgroundTint="@null" />
+                app:strokeColor="#4B5563" />
+
+            <LinearLayout
+                android:id="@+id/rtspInputContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <EditText
+                    android:id="@+id/rtspUrlInput"
+                    android:layout_width="220dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_input_field"
+                    android:hint="rtsp://192.168.0.1:554/livestream"
+                    android:inputType="textUri"
+                    android:paddingHorizontal="10dp"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#9CA3AF"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/rtspConnectBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/bg_primary_button"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:paddingHorizontal="12dp"
+                    android:text="Connect"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    app:backgroundTint="@null" />
+            </LinearLayout>
         </LinearLayout>
+
+        <!-- Traffic Light & Emergency Vehicle Compose Dashboard -->
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/trafficLightComposeView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:elevation="7dp" />
+
+        <!-- G-Force Meter Radar & Z-Axis Compose HUD -->
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/gForceComposeView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:elevation="7dp" />
     </LinearLayout>
 
     <!-- Bottom-Left Status & Speed HUD Pill -->

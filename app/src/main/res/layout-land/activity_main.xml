@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A0B10"
+    android:keepScreenOn="true">
+
+    <!-- Camera Preview Layer -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- RTSP Video Stream Layer -->
+    <TextureView
+        android:id="@+id/rtspPreview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- Vision Bounding Box Overlay -->
+    <com.example.driveguard.OverlayView
+        android:id="@+id/overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Top-Left Floating Control Card (Source & Vision Toggles) -->
+    <LinearLayout
+        android:id="@+id/rtspControlPanel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="12dp"
+        android:background="@drawable/bg_hud_card"
+        android:elevation="6dp"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/toggleVisionSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="Vision AI"
+            android:textColor="#F3F4F6"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/toggleGForceSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:checked="true"
+            android:text="G-Force Meter"
+            android:textColor="#F3F4F6"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/toggleSourceBtn"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginTop="6dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="12dp"
+            android:text="Source: Camera"
+            android:textColor="#E5E7EB"
+            android:textSize="12sp"
+            app:strokeColor="#4B5563" />
+
+        <LinearLayout
+            android:id="@+id/rtspInputContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/rtspUrlInput"
+                android:layout_width="220dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_input_field"
+                android:hint="rtsp://192.168.0.1:554/livestream"
+                android:inputType="textUri"
+                android:paddingHorizontal="10dp"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#9CA3AF"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/rtspConnectBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_primary_button"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingHorizontal="12dp"
+                android:text="Connect"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                app:backgroundTint="@null" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Traffic Light & Emergency Vehicle Compose Dashboard -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/trafficLightComposeView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="65dp"
+        android:elevation="7dp" />
+
+    <!-- G-Force Meter Radar & Z-Axis Compose HUD -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/gForceComposeView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="12dp"
+        android:elevation="7dp" />
+
+    <!-- Top Banner Hazard Alert (Floating Pill Card) -->
+    <LinearLayout
+        android:id="@+id/bannerCard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_status_pill"
+        android:elevation="8dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/banner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Bottom-Left Status & Speed HUD Pill -->
+    <LinearLayout
+        android:id="@+id/statusPill"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="12dp"
+        android:background="@drawable/bg_status_pill"
+        android:elevation="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp">
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#F9FAFB"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Bottom-Right Settings Drawer Toggle & Card -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="12dp"
+        android:gravity="end"
+        android:orientation="vertical">
+
+        <!-- Drawer Toggle Button -->
+        <ImageButton
+            android:id="@+id/btnToggleSettings"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="end"
+            android:background="@drawable/bg_status_pill"
+            android:contentDescription="Settings"
+            android:elevation="6dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_settings"
+            app:tint="#F3F4F6" />
+
+        <!-- Collapsible Threshold Settings Panel -->
+        <ScrollView
+            android:id="@+id/thresholdsScrollView"
+            android:layout_width="260dp"
+            android:layout_height="240dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_hud_card"
+            android:elevation="6dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/thresholdsPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:text="THROTTLING &amp; THRESHOLDS"
+                    android:textColor="#9CA3AF"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/safeHeadwayLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Safe Headway: 2.0s"
+                    android:textColor="#E5E7EB"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/safeHeadwaySeek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="50"
+                    android:min="5"
+                    android:progress="20" />
+
+                <TextView
+                    android:id="@+id/critHeadwayLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Critical Headway: 1.0s"
+                    android:textColor="#E5E7EB"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/critHeadwaySeek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="30"
+                    android:min="2"
+                    android:progress="10" />
+
+                <TextView
+                    android:id="@+id/critTtcLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Critical TTC: 2.5s"
+                    android:textColor="#E5E7EB"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/critTtcSeek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="50"
+                    android:min="5"
+                    android:progress="25" />
+
+                <TextView
+                    android:id="@+id/critCooldownLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Crit Cooldown: 3s"
+                    android:textColor="#E5E7EB"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/critCooldownSeek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="10"
+                    android:min="1"
+                    android:progress="3" />
+
+                <TextView
+                    android:id="@+id/warnCooldownLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Warn Cooldown: 6s"
+                    android:textColor="#E5E7EB"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/warnCooldownSeek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="20"
+                    android:min="1"
+                    android:progress="6" />
+
+                <TextView
+                    android:id="@+id/infoCooldownLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Info Cooldown: 20s"
+                    android:textColor="#E5E7EB"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/infoCooldownSeek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="60"
+                    android:min="5"
+                    android:progress="20" />
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+</FrameLayout>
