@@ -28,10 +28,10 @@
     <!-- Traffic Light & Emergency Vehicle Compose Dashboard -->
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/trafficLightComposeView"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="115dp"
+        android:layout_marginTop="75dp"
         android:elevation="7dp" />
 
     <!-- G-Force Meter Radar & Z-Axis Compose HUD -->
@@ -40,7 +40,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|end"
-        android:layout_margin="16dp"
+        android:layout_margin="12dp"
         android:elevation="7dp" />
 
     <!-- Top Banner Hazard Alert (Floating Pill Card) -->
@@ -73,7 +73,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
-        android:layout_margin="16dp"
+        android:layout_margin="12dp"
         android:background="@drawable/bg_hud_card"
         android:elevation="6dp"
         android:orientation="vertical"

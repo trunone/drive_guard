@@ -43,8 +43,8 @@ fun TrafficLightDashboardContent(
 ) {
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+            .widthIn(max = 340.dp)
+            .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // High-priority Emergency Vehicle Override Warning Banner

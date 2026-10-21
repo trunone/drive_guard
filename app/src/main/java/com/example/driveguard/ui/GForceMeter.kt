@@ -47,7 +47,7 @@ fun GForceMeterCard(
         colors = CardDefaults.cardColors(containerColor = Color(0xDD111827)),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
-            .width(320.dp)
+            .width(280.dp)
             .border(1.dp, Color(0xFF374151), RoundedCornerShape(16.dp))
     ) {
         Column(
@@ -110,10 +110,10 @@ fun GForceMeterCard(
                     gx = data.gx,
                     gy = data.gy,
                     peakXy = data.peakXy,
-                    modifier = Modifier.size(170.dp)
+                    modifier = Modifier.size(140.dp)
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
                 // Bar Meter for Z-Axis G-Force
                 GForceZBar(
@@ -121,8 +121,8 @@ fun GForceMeterCard(
                     peakZMax = data.peakZMax,
                     peakZMin = data.peakZMin,
                     modifier = Modifier
-                        .height(170.dp)
-                        .width(110.dp)
+                        .height(140.dp)
+                        .width(95.dp)
                 )
             }
 
