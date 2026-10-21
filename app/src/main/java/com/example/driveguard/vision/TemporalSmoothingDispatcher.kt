@@ -53,7 +53,8 @@ class TemporalSmoothingDispatcher(
         val firstState = ringBuffer.first().state
         val isConsistent = ringBuffer.all { it.state == firstState }
 
-        if (isConsistent && firstState != currentConfirmedState) {
+        if (isConsistent) {
+            val isTransition = (firstState != currentConfirmedState)
             currentConfirmedState = firstState
             val avgConfidence = ringBuffer.map { it.confidence }.average().toFloat()
 
@@ -73,8 +74,25 @@ class TemporalSmoothingDispatcher(
                 state = firstState
             )
 
-            _resultFlow.tryEmit(visionResult)
+            if (isTransition) {
+                _resultFlow.tryEmit(visionResult)
+            }
             return visionResult
+        } else if (currentConfirmedState != TrafficLightState.UNKNOWN) {
+            val activeColorStr = when (currentConfirmedState) {
+                TrafficLightState.RED -> "Red"
+                TrafficLightState.AMBER -> "Amber"
+                TrafficLightState.GREEN -> "Green"
+                TrafficLightState.LEFT_ARROW_GREEN -> "Left Arrow Green"
+                TrafficLightState.RIGHT_ARROW_GREEN -> "Right Arrow Green"
+                TrafficLightState.UNKNOWN -> "Unknown"
+            }
+            return TrafficLightVisionResult(
+                active_color = activeColorStr,
+                is_arrow = currentConfirmedState.isArrow,
+                confidence = ringBuffer.map { it.confidence }.average().toFloat(),
+                state = currentConfirmedState
+            )
         }
 
         return null

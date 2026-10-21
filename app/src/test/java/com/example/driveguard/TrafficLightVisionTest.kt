@@ -100,17 +100,26 @@ class TrafficLightVisionTest {
         assertFalse(frame3Output.is_arrow)
         assertEquals(0.9f, frame3Output.confidence, 0.01f)
 
-        // Frame 4: Amber -> null (state transition not yet confirmed)
-        assertNull(dispatcher.processFrame(amberResult))
+        // Frame 4: Red -> Continues to return Confirmed Red in steady state!
+        val frame4Output = dispatcher.processFrame(redResult)
+        assertNotNull(frame4Output)
+        assertEquals("Red", frame4Output!!.active_color)
 
-        // Frame 5: Amber -> null
-        assertNull(dispatcher.processFrame(amberResult))
+        // Frame 5: Amber -> returns Red (last confirmed state while buffering transition)
+        val frame5Output = dispatcher.processFrame(amberResult)
+        assertNotNull(frame5Output)
+        assertEquals("Red", frame5Output!!.active_color)
 
-        // Frame 6: Amber -> Confirmed Amber!
+        // Frame 6: Amber -> returns Red (buffer is [Red, Amber, Amber])
         val frame6Output = dispatcher.processFrame(amberResult)
         assertNotNull(frame6Output)
-        assertEquals("Amber", frame6Output!!.active_color)
-        assertFalse(frame6Output.is_arrow)
+        assertEquals("Red", frame6Output!!.active_color)
+
+        // Frame 7: Amber -> Confirmed Amber! (buffer is [Amber, Amber, Amber])
+        val frame7Output = dispatcher.processFrame(amberResult)
+        assertNotNull(frame7Output)
+        assertEquals("Amber", frame7Output!!.active_color)
+        assertFalse(frame7Output.is_arrow)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
