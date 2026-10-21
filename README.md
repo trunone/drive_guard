@@ -1,23 +1,47 @@
-# DriveGuard – driver hazard detection (Android, Kotlin)
+# DriveGuard – Real-Time Driver Hazard & Traffic Signal Detection
 
-Live camera → on-device object detection (MediaPipe + EfficientDet-Lite, COCO) → rule-based hazards:
-red / yellow / green traffic light, pedestrians & cyclists in or near your lane, stop signs,
-too-short following distance and forward-collision risk. Alerts appear as a banner and are spoken.
+DriveGuard (`com.github.trunone.drive_guard`) is an Android application written in Kotlin designed for real-time driver assistance, hazard detection, and intelligent traffic signal monitoring.
 
-## Setup
-1. Open this folder in Android Studio (it creates the Gradle wrapper and syncs; bump library versions if it suggests).
-2. Download the model and put it in `app/src/main/assets/`:
-   https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/1/efficientdet_lite0.tflite
-   (For better range, use `efficientdet_lite2` from the same bucket and change `MODEL` in `HazardDetector.kt`.)
-3. Run on a real phone, mount it in landscape on the dashboard, grant Camera + Location (GPS speed).
+## Key Features
 
-## How it works
-- `HazardDetector` – detects person, bicycle, car, motorcycle, bus, truck, traffic light, stop sign.
-- `HazardAnalyzer` – "ego lane" = centre 30–70% of the frame. Distance = pinhole estimate from box size and
-  assumed real size (car 1.8 m wide, person 1.7 m tall); FOV is read from the camera. Time gap = distance / GPS speed.
-  Traffic-light colour = HSV pixel vote inside the box, majority-voted over 7 frames.
-- Thresholds live at the top of `HazardAnalyzer.kt`; cooldowns in `AlertManager.kt`.
+- **Dual-Source Video Feed**: Supports standard device camera feeds via CameraX as well as live RTSP video streams.
+- **Two-Stage Traffic Light Vision Pipeline**:
+  - **Stage 1 Object Detection**: Uses `yolov8n_traffic_detector.tflite` for fast localized traffic signal bounding box detection.
+  - **Stage 2 State Classification**: Uses `traffic_state_classifier.tflite` alongside temporal smoothing (`TemporalSmoothingDispatcher`) for accurate traffic light state classification (Red, Yellow, Green, Off, Unknown).
+- **Driver Hazard Analysis**: Pinpoints objects (vehicles, pedestrians, cyclists) in the ego lane using pinhole monocular distance estimation, safe headway/time-to-collision (TTC) calculations, and configurable thresholds.
+- **V2X & MQTT iVRI Ingestion**: Ingests real-time traffic signal streams via MQTT (`org.eclipse.paho`) parsing iVRI payloads, persisted locally via Room (`AppDatabase`).
+- **G-Force Monitoring**: Real-time G-force sensor tracking (`GForceSensorManager`) with peak recording and orientation calibration rendered with Jetpack Compose (`GForceMeterCard`).
+- **Interactive Compose HUD & Dashboard**: Real-time traffic signal status UI overlay (`TrafficLightDashboard`) and customizable alert audio/banner feedback (`AlertManager`).
 
-## Limits
-Prototype only, not a certified safety system. Monocular distances are rough; small/far lights, night glare and LED
-flicker reduce accuracy; speed needs a GPS fix. Don't operate the phone while driving and follow local mounting laws.
+## Setup & Assets
+
+1. Open the project in Android Studio (Java 17 required).
+2. Ensure required TensorFlow Lite models exist in `app/src/main/assets/`:
+   - `yolov8n_traffic_detector.tflite`
+   - `traffic_state_classifier.tflite`
+3. Build and install on an Android device running Android 8.0 (API 26) or higher (`./gradlew assembleDebug`).
+4. Grant Camera and Location permissions when prompted.
+
+## Architecture Highlights
+
+- **`com.github.trunone.drive_guard`**: Base package containing `MainActivity` HUD integration.
+- **`vision/`**: Stage 1 YOLOv8 detector, Stage 2 traffic state classifier, and temporal smoothing dispatcher.
+- **`sensor/` & `ui/`**: G-Force sensor manager, Jetpack Compose HUD dashboards, and bounding box overlays.
+- **`mqtt/` & `data/`**: MQTT client manager for iVRI traffic signals, Room database (`AppDatabase`, `TrafficLightDao`), and repository pattern.
+- **`service/`**: Foreground `LocationTrackingService` for GPS speed and region boundary evaluations.
+
+## Testing & Build
+
+Run unit tests via Gradle:
+```bash
+./gradlew test
+```
+
+Build the debug APK:
+```bash
+./gradlew assembleDebug
+```
+
+## Disclaimer
+
+DriveGuard is a research and prototyping platform. Monocular distance estimates and vision classifications are subject to environmental conditions (glare, weather, night conditions). It is not a certified automotive safety system. Always stay attentive while driving.
