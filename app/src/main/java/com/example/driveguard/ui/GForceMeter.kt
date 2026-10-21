@@ -330,7 +330,7 @@ fun GForceZBar(
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
                 )
 
-                // Fill level: calculate target Y for gz
+                // Fill level: calculate target Y for gz (0.0g at bottom, 2.0g at top)
                 val clampedGz = gz.coerceIn(0.0f, 2.0f)
                 val currentY = top + height * (1.0f - (clampedGz / 2.0f))
 
@@ -342,23 +342,30 @@ fun GForceZBar(
                     else -> Color(0xFFEF4444)        // Red
                 }
 
-                // Fill from baseline or bottom
-                val fillTop = min(currentY, baselineY)
-                val fillHeight = abs(currentY - baselineY).coerceAtLeast(4f)
+                // Fill from bottom (0.0g) up to currentY level
+                val fillHeight = (bottom - currentY).coerceAtLeast(2f)
 
                 drawRoundRect(
                     color = barColor,
-                    topLeft = Offset(left, fillTop),
+                    topLeft = Offset(left, currentY),
                     size = Size(barWidth, fillHeight),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
                 )
 
-                // 1.0g Baseline Tick Line
+                // 1.0g Baseline Reference Line
                 drawLine(
-                    color = Color.White,
+                    color = Color(0xCCFFFFFF),
                     start = Offset(left - 4f, baselineY),
                     end = Offset(left + barWidth + 4f, baselineY),
                     strokeWidth = 2f
+                )
+
+                // Active Live Level Indicator Cap Line
+                drawLine(
+                    color = Color.White,
+                    start = Offset(left - 2f, currentY),
+                    end = Offset(left + barWidth + 2f, currentY),
+                    strokeWidth = 3f
                 )
 
                 // Peak Max Tick Line
