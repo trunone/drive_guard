@@ -34,6 +34,15 @@
         android:layout_marginTop="115dp"
         android:elevation="7dp" />
 
+    <!-- G-Force Meter Radar & Z-Axis Compose HUD -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/gForceComposeView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:elevation="7dp" />
+
     <!-- Top Banner Hazard Alert (Floating Pill Card) -->
     <LinearLayout
         android:id="@+id/bannerCard"
@@ -76,6 +85,17 @@
             android:layout_height="wrap_content"
             android:checked="true"
             android:text="Vision AI"
+            android:textColor="#F3F4F6"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/toggleGForceSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:checked="true"
+            android:text="G-Force Meter"
             android:textColor="#F3F4F6"
             android:textSize="13sp"
             android:textStyle="bold" />

@@ -23,9 +23,13 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import com.example.driveguard.data.AppDatabase
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.example.driveguard.data.TrafficLightRepository
 import com.example.driveguard.databinding.ActivityMainBinding
+import com.example.driveguard.sensor.GForceSensorManager
 import com.example.driveguard.service.LocationTrackingService
+import com.example.driveguard.ui.GForceMeterCard
 import com.example.driveguard.ui.TrafficLightDashboard
 import com.example.driveguard.ui.TrafficLightViewModel
 import java.util.concurrent.Executors
@@ -39,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var b: ActivityMainBinding
     private lateinit var alerts: AlertManager
     private lateinit var speed: SpeedProvider
+    private lateinit var gForceManager: GForceSensorManager
     private var detector: HazardDetector? = null
     private val analyzer = HazardAnalyzer()
     private val exec = Executors.newSingleThreadExecutor()
@@ -72,11 +77,13 @@ class MainActivity : AppCompatActivity() {
         b.preview.scaleType = PreviewView.ScaleType.FIT_CENTER
         alerts = AlertManager(this)
         speed = SpeedProvider(this)
+        gForceManager = GForceSensorManager(this)
         setupThresholdSliders()
         setupRtspControls()
         setupVisionToggle()
         setupDrawerControls()
         setupTrafficDashboard()
+        setupGForceMeter()
         try {
             detector = HazardDetector(this)
         } catch (e: Throwable) {
@@ -93,6 +100,32 @@ class MainActivity : AppCompatActivity() {
         b.trafficLightComposeView.setContent {
             TrafficLightDashboard(viewModel = viewModel)
         }
+    }
+
+    private fun setupGForceMeter() {
+        b.gForceComposeView.setContent {
+            val data by gForceManager.gForceData.collectAsState()
+            GForceMeterCard(
+                data = data,
+                onCalibrate = { gForceManager.calibrateForwardOrientation() },
+                onResetPeaks = { gForceManager.resetPeaks() }
+            )
+        }
+
+        b.toggleGForceSwitch.isChecked = true
+        b.toggleGForceSwitch.setOnCheckedChangeListener { _, isChecked ->
+            b.gForceComposeView.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        gForceManager.start()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        gForceManager.stop()
     }
 
     private fun setupDrawerControls() {
