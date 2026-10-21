@@ -198,16 +198,15 @@ class GForceSensorManager(context: Context) : SensorEventListener {
             val uzy = -ugy
             val uzz = -ugz
 
-            // Z-axis acceleration along gravity direction: scalar dot product
-            // a_Z = a . u_Z = - (a . g) / |g|
-            val aZ = ax * uzx + ay * uzy + az * uzz
-            val gzForce = aZ / GRAVITY_EARTH
+            // Z-axis acceleration along gravity direction: scalar magnitude
+            val signedAZ = ax * uzx + ay * uzy + az * uzz
+            val gzForce = abs(signedAZ) / GRAVITY_EARTH
 
             // Horizontal acceleration vector in XY plane perpendicular to gravity:
             // a_XY = a - a_Z * u_Z
-            val aXyX = ax - aZ * uzx
-            val aXyY = ay - aZ * uzy
-            val aXyZ = az - aZ * uzz
+            val aXyX = ax - signedAZ * uzx
+            val aXyY = ay - signedAZ * uzy
+            val aXyZ = az - signedAZ * uzz
 
             // Forward horizontal unit vector u_fwd
             // Default reference: device Y-axis (0, 1, 0) projected on horizontal plane

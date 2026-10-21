@@ -148,7 +148,7 @@ fun GForceMeterCard(
                 )
 
                 Text(
-                    text = "Z: ${"%.2f".format(data.gz)}g",
+                    text = "Z: ${"%.2f".format(abs(data.gz))}g",
                     color = Color(0xFF10B981),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -320,6 +320,7 @@ fun GForceZBar(
     peakZMin: Float,
     modifier: Modifier = Modifier
 ) {
+    val displayGz = abs(gz)
     Box(
         modifier = modifier
             .background(Color(0xFF1F2937), RoundedCornerShape(8.dp))
@@ -362,11 +363,11 @@ fun GForceZBar(
                 )
 
                 // Fill level: calculate target Y for gz (0.0g at bottom, 2.0g at top)
-                val clampedGz = gz.coerceIn(0.0f, 2.0f)
+                val clampedGz = displayGz.coerceIn(0.0f, 2.0f)
                 val currentY = top + height * (1.0f - (clampedGz / 2.0f))
 
                 // Dynamic Bar Color based on deviation from 1.0g
-                val dev = abs(gz - 1.0f)
+                val dev = abs(displayGz - 1.0f)
                 val barColor = when {
                     dev < 0.2f -> Color(0xFF10B981) // Green
                     dev < 0.4f -> Color(0xFFF59E0B) // Amber
@@ -434,7 +435,7 @@ fun GForceZBar(
 
             // Live Z-value
             Text(
-                text = "${"%.2f".format(gz)} G",
+                text = "${"%.2f".format(displayGz)} G",
                 color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.ExtraBold
