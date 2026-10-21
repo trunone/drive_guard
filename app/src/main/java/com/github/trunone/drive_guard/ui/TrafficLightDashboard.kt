@@ -1,0 +1,196 @@
+package com.github.trunone.drive_guard.ui
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+/**
+ * Glanceable Jetpack Compose Dashboard UI displaying real-time iVRI and Vision traffic light color,
+ * turn arrow state, countdown timer, and high-priority emergency vehicle override warnings.
+ */
+@Composable
+fun TrafficLightDashboard(
+    viewModel: TrafficLightViewModel,
+    modifier: Modifier = Modifier
+) {
+    val state by viewModel.uiState.collectAsState()
+    TrafficLightDashboardContent(state = state, modifier = modifier)
+}
+
+@Composable
+fun TrafficLightDashboardContent(
+    state: TrafficLightUiState,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .widthIn(max = 340.dp)
+            .padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // High-priority Emergency Vehicle Override Warning Banner
+        val emergencyActive = state.activeState?.emergencyOverrideActive == true
+        AnimatedVisibility(
+            visible = emergencyActive,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFD32F2F)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "🚨 EMERGENCY VEHICLE OVERRIDE ACTIVE - CLEAR LANE!",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
+        // Glanceable Signal Card
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xCC1E1E1E)),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Active Traffic Light Color Indicator Circle
+                val visionColor = state.visionResult?.active_color
+                val activeColorText = visionColor
+                    ?: state.activeState?.currentColor
+                    ?: "SEARCH"
+
+                val lightColor = when (activeColorText.uppercase()) {
+                    "RED" -> Color(0xFFE53935)
+                    "AMBER", "YELLOW" -> Color(0xFFFFB300)
+                    "GREEN" -> Color(0xFF43A047)
+                    "LEFT ARROW GREEN", "RIGHT ARROW GREEN" -> Color(0xFF00E676)
+                    else -> Color.DarkGray
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(lightColor)
+                        .border(4.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val symbolText = when {
+                        state.visionResult?.is_arrow == true && activeColorText.contains("Left", ignoreCase = true) -> "←"
+                        state.visionResult?.is_arrow == true && activeColorText.contains("Right", ignoreCase = true) -> "→"
+                        else -> activeColorText.take(1)
+                    }
+
+                    Text(
+                        text = symbolText,
+                        color = Color.White,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 28.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Information & Countdown Column
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    if (state.isSearchingSignal && state.nearestIntersection == null && state.visionResult == null) {
+                        Text(
+                            text = "Searching for nearest iVRI signal or traffic light...",
+                            color = Color.LightGray,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else {
+                        val distanceStr = state.distanceMeters?.let { "%.0fm".format(it) } ?: ""
+                        val signalLabel = if (state.nearestIntersection != null) {
+                            "Signal: ${state.nearestIntersection.id} ($distanceStr)"
+                        } else {
+                            "Vision Light Analysis"
+                        }
+
+                        Text(
+                            text = signalLabel,
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = "State: $activeColorText",
+                            color = lightColor,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        state.visionResult?.let { vr ->
+                            Text(
+                                text = "Confidence: ${"%.0f".format(vr.confidence * 100)}%",
+                                color = Color.Gray,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+
+                // Countdown Timer Display
+                if (state.activeState != null && state.activeState.countdownSeconds > 0) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF333333))
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${state.activeState.countdownSeconds}s",
+                            color = Color.Yellow,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

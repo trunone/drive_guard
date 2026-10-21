@@ -20,7 +20,7 @@
         android:visibility="gone" />
 
     <!-- Vision Bounding Box Overlay -->
-    <com.example.driveguard.OverlayView
+    <com.github.trunone.drive_guard.OverlayView
         android:id="@+id/overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

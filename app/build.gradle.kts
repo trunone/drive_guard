@@ -5,10 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "com.example.driveguard"
+    namespace = "com.github.trunone.drive_guard"
     compileSdk = 34
     defaultConfig {
-        applicationId = "com.example.driveguard"
+        applicationId = "com.github.trunone.drive_guard"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
