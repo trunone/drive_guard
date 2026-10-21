@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Glanceable Jetpack Compose Dashboard UI displaying real-time iVRI traffic light color,
- * countdown timer, and high-priority emergency vehicle override warnings.
+ * Glanceable Jetpack Compose Dashboard UI displaying real-time iVRI and Vision traffic light color,
+ * turn arrow state, countdown timer, and high-priority emergency vehicle override warnings.
  */
 @Composable
 fun TrafficLightDashboard(
@@ -91,10 +91,16 @@ fun TrafficLightDashboardContent(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 // Active Traffic Light Color Indicator Circle
-                val lightColor = when (state.activeState?.currentColor?.uppercase()) {
+                val visionColor = state.visionResult?.active_color
+                val activeColorText = visionColor
+                    ?: state.activeState?.currentColor
+                    ?: "SEARCH"
+
+                val lightColor = when (activeColorText.uppercase()) {
                     "RED" -> Color(0xFFE53935)
                     "AMBER", "YELLOW" -> Color(0xFFFFB300)
                     "GREEN" -> Color(0xFF43A047)
+                    "LEFT ARROW GREEN", "RIGHT ARROW GREEN" -> Color(0xFF00E676)
                     else -> Color.DarkGray
                 }
 
@@ -106,9 +112,14 @@ fun TrafficLightDashboardContent(
                         .border(4.dp, Color.White.copy(alpha = 0.8f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    val activeColorText = state.activeState?.currentColor ?: "SEARCH"
+                    val symbolText = when {
+                        state.visionResult?.is_arrow == true && activeColorText.contains("Left", ignoreCase = true) -> "←"
+                        state.visionResult?.is_arrow == true && activeColorText.contains("Right", ignoreCase = true) -> "→"
+                        else -> activeColorText.take(1)
+                    }
+
                     Text(
-                        text = activeColorText.take(1),
+                        text = symbolText,
                         color = Color.White,
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 28.sp
@@ -122,29 +133,43 @@ fun TrafficLightDashboardContent(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    if (state.isSearchingSignal || state.nearestIntersection == null) {
+                    if (state.isSearchingSignal && state.nearestIntersection == null && state.visionResult == null) {
                         Text(
-                            text = "Searching for nearest iVRI signal...",
+                            text = "Searching for nearest iVRI signal or traffic light...",
                             color = Color.LightGray,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium
                         )
                     } else {
                         val distanceStr = state.distanceMeters?.let { "%.0fm".format(it) } ?: ""
+                        val signalLabel = if (state.nearestIntersection != null) {
+                            "Signal: ${state.nearestIntersection.id} ($distanceStr)"
+                        } else {
+                            "Vision Light Analysis"
+                        }
+
                         Text(
-                            text = "Signal: ${state.nearestIntersection.id} ($distanceStr)",
+                            text = signalLabel,
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
 
-                        val stateText = state.activeState?.currentColor ?: "ACTIVE"
                         Text(
-                            text = "State: $stateText",
+                            text = "State: $activeColorText",
                             color = lightColor,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
+
+                        state.visionResult?.let { vr ->
+                            Text(
+                                text = "Confidence: ${"%.0f".format(vr.confidence * 100)}%",
+                                color = Color.Gray,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
                     }
                 }
 
