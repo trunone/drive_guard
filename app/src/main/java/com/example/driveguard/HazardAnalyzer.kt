@@ -3,6 +3,9 @@ package com.example.driveguard
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.RectF
+import com.example.driveguard.vision.TrafficLightState
+import com.example.driveguard.vision.TrafficLightVisionPipeline
+import com.example.driveguard.vision.TrafficLightVisionPipeline.Companion.toLightColor
 import kotlin.math.max
 import kotlin.math.tan
 
@@ -10,7 +13,9 @@ private val VEHICLE_WIDTH_M = mapOf("car" to 1.8f, "truck" to 2.5f, "bus" to 2.5
 private val VRU_HEIGHT_M = mapOf("person" to 1.7f, "bicycle" to 1.1f)
 
 /** Turns raw detections into driver hazards. Distances are rough monocular (pinhole) estimates. */
-class HazardAnalyzer {
+class HazardAnalyzer(
+    var visionPipeline: TrafficLightVisionPipeline? = null
+) {
     @Volatile var hFovDeg = 66f
     @Volatile var safeHeadwayS = 2.0f   // warn below this time gap to the car ahead
     @Volatile var critHeadwayS = 1.0f   // critical time gap
@@ -68,27 +73,34 @@ class HazardAnalyzer {
             }
         }
 
-        // 3) Traffic light state (majority vote over recent frames to avoid flicker)
-        val tlCandidates = dets.filter { it.label == "traffic light" && cx(it) in 0.05f..0.95f && it.box.centerY() < 0.6f * h }
-            .sortedByDescending { it.box.height() * it.box.width() }
-        var chosenColor = LightColor.UNKNOWN
+        // 3) Traffic light state
         var chosenTl: Det? = null
-        for (cand in tlCandidates) {
-            val color = LightClassifier.classify(bmp, cand.box)
-            if (color != LightColor.UNKNOWN) {
-                chosenColor = color
-                chosenTl = cand
-                break
+        var stable: LightColor?
+
+        val pipelineResult = visionPipeline?.processFrame(bmp)
+        if (pipelineResult != null && pipelineResult.state != TrafficLightState.UNKNOWN) {
+            stable = pipelineResult.state.toLightColor()
+        } else {
+            val tlCandidates = dets.filter { it.label == "traffic light" && cx(it) in 0.05f..0.95f && it.box.centerY() < 0.6f * h }
+                .sortedByDescending { it.box.height() * it.box.width() }
+            var chosenColor = LightColor.UNKNOWN
+            for (cand in tlCandidates) {
+                val color = LightClassifier.classify(bmp, cand.box)
+                if (color != LightColor.UNKNOWN) {
+                    chosenColor = color
+                    chosenTl = cand
+                    break
+                }
             }
+            if (chosenTl == null && tlCandidates.isNotEmpty()) {
+                chosenTl = tlCandidates.first()
+            }
+            colors.addLast(chosenColor)
+            while (colors.size > 7) colors.removeFirst()
+            stable = listOf(LightColor.RED, LightColor.YELLOW, LightColor.GREEN, LightColor.GREEN_LEFT, LightColor.GREEN_RIGHT)
+                .maxByOrNull { c -> colors.count { it == c } }
+                ?.takeIf { s -> colors.count { it == s } >= 4 }
         }
-        if (chosenTl == null && tlCandidates.isNotEmpty()) {
-            chosenTl = tlCandidates.first()
-        }
-        colors.addLast(chosenColor)
-        while (colors.size > 7) colors.removeFirst()
-        val stable = listOf(LightColor.RED, LightColor.YELLOW, LightColor.GREEN, LightColor.GREEN_LEFT, LightColor.GREEN_RIGHT)
-            .maxByOrNull { c -> colors.count { it == c } }
-            ?.takeIf { s -> colors.count { it == s } >= 4 }
         val fast = (speed ?: 0f) > 6f
         val lightX = chosenTl?.let { cx(it) } ?: 0.5f
         val posDesc = when {

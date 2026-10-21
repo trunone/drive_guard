@@ -5,16 +5,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.driveguard.data.TrafficLightRepository
 import com.example.driveguard.service.LocationTrackingService
+import com.example.driveguard.vision.TrafficLightVisionResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 /**
- * Jetpack Compose ViewModel monitoring live GPS updates and Room queries for nearest traffic signals.
+ * Jetpack Compose ViewModel monitoring live GPS updates, Room queries, and Vision analysis SharedFlow for traffic signals.
  */
 class TrafficLightViewModel(
     private val repository: TrafficLightRepository,
-    private val locationFlow: StateFlow<Location?> = LocationTrackingService.locationFlow
+    private val locationFlow: StateFlow<Location?> = LocationTrackingService.locationFlow,
+    private val visionFlow: SharedFlow<TrafficLightVisionResult>? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TrafficLightUiState())
@@ -22,6 +24,19 @@ class TrafficLightViewModel(
 
     init {
         observeLocationAndSignals()
+        observeVisionFlow()
+    }
+
+    private fun observeVisionFlow() {
+        visionFlow?.let { flow ->
+            viewModelScope.launch {
+                flow.collect { visionResult ->
+                    _uiState.update { currentState ->
+                        currentState.copy(visionResult = visionResult)
+                    }
+                }
+            }
+        }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -48,7 +63,7 @@ class TrafficLightViewModel(
                                         val primaryState = states.firstOrNull { it.emergencyOverrideActive }
                                             ?: states.firstOrNull()
 
-                                        TrafficLightUiState(
+                                        _uiState.value.copy(
                                             userLatitude = location.latitude,
                                             userLongitude = location.longitude,
                                             nearestIntersection = nearest,
@@ -60,7 +75,7 @@ class TrafficLightViewModel(
                             )
                         } else {
                             emit(
-                                TrafficLightUiState(
+                                _uiState.value.copy(
                                     userLatitude = location.latitude,
                                     userLongitude = location.longitude,
                                     nearestIntersection = null,

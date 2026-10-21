@@ -2,34 +2,21 @@ package com.example.driveguard
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.RectF
-import com.google.mediapipe.framework.image.BitmapImageBuilder
-import com.google.mediapipe.tasks.core.BaseOptions
-import com.google.mediapipe.tasks.vision.core.RunningMode
-import com.google.mediapipe.tasks.vision.objectdetector.ObjectDetector
+import com.example.driveguard.vision.StageOneDetector
 
-/** COCO object detector (MediaPipe). Runs synchronously on the analysis thread. */
+/** Object detector using StageOneDetector (YOLOv8). Runs synchronously on the analysis thread. */
 class HazardDetector(context: Context) {
-    private val detector = ObjectDetector.createFromOptions(
-        context,
-        ObjectDetector.ObjectDetectorOptions.builder()
-            .setBaseOptions(BaseOptions.builder().setModelAssetPath(MODEL).build())
-            .setRunningMode(RunningMode.IMAGE)
-            .setScoreThreshold(0.35f)
-            .setMaxResults(25)
-            .build()
-    )
+    private val stageOneDetector = StageOneDetector(context, MODEL)
 
     fun detect(bmp: Bitmap): List<Det> =
-        detector.detect(BitmapImageBuilder(bmp).build()).detections().mapNotNull { d ->
-            val c = d.categories().firstOrNull() ?: return@mapNotNull null
-            if (c.categoryName() in RELEVANT) Det(c.categoryName(), c.score(), RectF(d.boundingBox())) else null
+        stageOneDetector.detectAll(bmp).map { detection ->
+            Det("traffic light", detection.confidence, detection.box)
         }
 
-    fun close() = detector.close()
+    fun close() = stageOneDetector.close()
 
     companion object {
-        const val MODEL = "efficientdet_lite0.tflite" // swap for efficientdet_lite2 for better range
+        const val MODEL = StageOneDetector.DEFAULT_MODEL_NAME
         val RELEVANT = setOf("person", "bicycle", "car", "motorcycle", "bus", "truck", "traffic light", "stop sign")
     }
 }
