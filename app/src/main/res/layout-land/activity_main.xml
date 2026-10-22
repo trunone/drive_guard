@@ -360,19 +360,6 @@
                     android:textColor="#FFFFFF"
                     android:textSize="12sp"
                     app:backgroundTint="@null" />
-
-                <Button
-                    android:id="@+id/btnDownloadModelsSettings"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="36dp"
-                    android:layout_marginTop="6dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:text="Download Models Link"
-                    android:textColor="#E5E7EB"
-                    android:textSize="12sp"
-                    app:strokeColor="#4B5563" />
             </LinearLayout>
         </ScrollView>
     </LinearLayout>

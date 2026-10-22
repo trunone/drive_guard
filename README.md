@@ -15,16 +15,17 @@ DriveGuard (`com.github.trunone.drive_guard`) is an Android application written 
 
 ## Setup & Assets
 
-### Model Download Links
-Model files can be downloaded from official project releases and model sites:
-- **Official DriveGuard Releases Site**: [https://github.com/trunone/drive_guard/releases](https://github.com/trunone/drive_guard/releases)
-- **Official TensorFlow Lite Website**: [https://www.tensorflow.org/lite/models](https://www.tensorflow.org/lite/models)
-- **Official Ultralytics Website**: [https://ultralytics.com](https://ultralytics.com)
+### Required Model Files
+
+The application requires two TensorFlow Lite model files:
+
+- **`yolov8n_traffic_detector.tflite`**: Stage 1 object detector used for real-time bounding box detection of traffic lights, vehicles (cars, trucks, buses, motorcycles), pedestrians, cyclists, and stop signs.
+- **`traffic_state_classifier.tflite`**: Stage 2 classification engine used to crop detected traffic signals and classify their state (Red, Yellow, Green, Left/Right Green Arrow, Off, Unknown).
 
 ### Model Import Options
-You can load the model files into DriveGuard using either method:
-- **In-App Import (Runtime)**: Download `.tflite` model files to your device, tap **"Import Model (.tflite)"** on the top banner or in the Settings panel within the app, and select the `.tflite` file.
-- **Build-Time Assets**: Place the downloaded model files directly into `app/src/main/assets/` before compiling.
+You can load these model files into DriveGuard using either method:
+- **In-App Import (Runtime)**: Place `.tflite` model files on your device storage, tap **"Import Model (.tflite)"** on the top banner or in the Settings panel within the app, and select the file.
+- **Build-Time Assets**: Place the model files directly into `app/src/main/assets/` before compiling.
 
 ### Getting Started
 1. Open the project in Android Studio (Java 17 required).

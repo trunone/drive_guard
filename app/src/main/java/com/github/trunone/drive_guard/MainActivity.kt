@@ -100,10 +100,6 @@ class MainActivity : AppCompatActivity() {
         b.btnImportModelSettings.setOnClickListener {
             modelPickerLauncher.launch(arrayOf("*/*"))
         }
-        b.btnDownloadModelsSettings.setOnClickListener {
-            val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/trunone/drive_guard/releases"))
-            startActivity(browserIntent)
-        }
     }
 
     private fun tryInitializeDetector() {
