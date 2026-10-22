@@ -40,12 +40,19 @@ class StageOneDetector(
 
         private fun createInterpreter(context: Context, modelAssetPath: String): Pair<Interpreter?, GpuDelegate?> {
             return try {
-                val assetFileDescriptor = context.assets.openFd(modelAssetPath)
-                val inputStream = FileInputStream(assetFileDescriptor.fileDescriptor)
-                val fileChannel = inputStream.channel
-                val startOffset = assetFileDescriptor.startOffset
-                val declaredLength = assetFileDescriptor.declaredLength
-                val modelBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+                val customFile = java.io.File(context.filesDir, modelAssetPath)
+                val modelBuffer = if (customFile.exists() && customFile.length() > 0) {
+                    val inputStream = FileInputStream(customFile)
+                    val fileChannel = inputStream.channel
+                    fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, customFile.length())
+                } else {
+                    val assetFileDescriptor = context.assets.openFd(modelAssetPath)
+                    val inputStream = FileInputStream(assetFileDescriptor.fileDescriptor)
+                    val fileChannel = inputStream.channel
+                    val startOffset = assetFileDescriptor.startOffset
+                    val declaredLength = assetFileDescriptor.declaredLength
+                    fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+                }
 
                 var delegate: GpuDelegate?
                 val options = Interpreter.Options()

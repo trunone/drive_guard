@@ -15,12 +15,21 @@ DriveGuard (`com.github.trunone.drive_guard`) is an Android application written 
 
 ## Setup & Assets
 
+### Model Download Links
+Download the required TensorFlow Lite model files below:
+- **Stage 1 Object Detector**: [`yolov8n_traffic_detector.tflite`](https://github.com/trunone/drive_guard/releases/download/v1.0.0/yolov8n_traffic_detector.tflite)
+- **Stage 2 State Classifier**: [`traffic_state_classifier.tflite`](https://github.com/trunone/drive_guard/releases/download/v1.0.0/traffic_state_classifier.tflite)
+- All releases & asset downloads are available on [DriveGuard GitHub Releases](https://github.com/trunone/drive_guard/releases).
+
+### Model Import Options
+You can load the model files into DriveGuard using either method:
+- **In-App Import (Runtime)**: Download `.tflite` model files to your device, tap **"Import Model (.tflite)"** on the top banner or in the Settings panel within the app, and select the `.tflite` file.
+- **Build-Time Assets**: Place the downloaded model files directly into `app/src/main/assets/` before compiling.
+
+### Getting Started
 1. Open the project in Android Studio (Java 17 required).
-2. Ensure required TensorFlow Lite models exist in `app/src/main/assets/`:
-   - `yolov8n_traffic_detector.tflite`
-   - `traffic_state_classifier.tflite`
-3. Build and install on an Android device running Android 8.0 (API 26) or higher (`./gradlew assembleDebug`).
-4. Grant Camera and Location permissions when prompted.
+2. Build and install on an Android device running Android 8.0 (API 26) or higher (`./gradlew assembleDebug`).
+3. Grant Camera and Location permissions when prompted.
 
 ## Architecture Highlights
 

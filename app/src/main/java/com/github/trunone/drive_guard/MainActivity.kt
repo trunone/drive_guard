@@ -55,6 +55,10 @@ class MainActivity : AppCompatActivity() {
     private var rtspConnected = false
     private var rtspManager: RtspCameraManager? = null
 
+    private val modelPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { importModelFile(it) }
+    }
+
     private val perms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         if (r[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
             speed.start()
@@ -82,15 +86,81 @@ class MainActivity : AppCompatActivity() {
         setupRtspControls()
         setupVisionToggle()
         setupDrawerControls()
+        setupModelManagement()
         setupTrafficDashboard()
         setupGForceMeter()
+        tryInitializeDetector()
+        perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
+    private fun setupModelManagement() {
+        b.btnImportModelBanner.setOnClickListener {
+            modelPickerLauncher.launch(arrayOf("*/*"))
+        }
+        b.btnImportModelSettings.setOnClickListener {
+            modelPickerLauncher.launch(arrayOf("*/*"))
+        }
+        b.btnDownloadModelsSettings.setOnClickListener {
+            val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/trunone/drive_guard/releases"))
+            startActivity(browserIntent)
+        }
+    }
+
+    private fun tryInitializeDetector() {
         try {
             detector = HazardDetector(this)
+            b.bannerCard.visibility = View.GONE
+            b.btnImportModelBanner.visibility = View.GONE
+            b.status.text = ""
         } catch (e: Throwable) {
             b.bannerCard.visibility = View.VISIBLE
-            b.banner.text = "Model missing: add ${HazardDetector.MODEL} to app/src/main/assets"
+            b.btnImportModelBanner.visibility = View.VISIBLE
+            b.banner.text = "Model missing: add ${HazardDetector.MODEL} or import .tflite file"
         }
-        perms.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
+    private fun importModelFile(uri: android.net.Uri) {
+        try {
+            val fileName = getFileNameFromUri(uri) ?: "yolov8n_traffic_detector.tflite"
+            val targetName = when {
+                fileName.contains("classifier", ignoreCase = true) || fileName.contains("state", ignoreCase = true) ->
+                    "traffic_state_classifier.tflite"
+                else ->
+                    "yolov8n_traffic_detector.tflite"
+            }
+            val destFile = java.io.File(filesDir, targetName)
+            contentResolver.openInputStream(uri)?.use { input ->
+                java.io.FileOutputStream(destFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            Toast.makeText(this, "Successfully imported $targetName", Toast.LENGTH_LONG).show()
+            tryInitializeDetector()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to import model: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun getFileNameFromUri(uri: android.net.Uri): String? {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (index != -1) {
+                        result = cursor.getString(index)
+                    }
+                }
+            }
+        }
+        if (result == null) {
+            result = uri.path
+            val cut = result?.lastIndexOf('/') ?: -1
+            if (cut != -1) {
+                result = result?.substring(cut + 1)
+            }
+        }
+        return result
     }
 
     private fun setupTrafficDashboard() {
