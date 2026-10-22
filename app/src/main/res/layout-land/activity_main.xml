@@ -135,7 +135,8 @@
         android:layout_marginTop="12dp"
         android:background="@drawable/bg_status_pill"
         android:elevation="8dp"
-        android:orientation="horizontal"
+        android:gravity="center"
+        android:orientation="vertical"
         android:paddingHorizontal="20dp"
         android:paddingVertical="12dp"
         android:visibility="gone">
@@ -148,6 +149,21 @@
             android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnImportModelBanner"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_primary_button"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:paddingHorizontal="16dp"
+            android:text="Import Model (.tflite)"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:visibility="gone"
+            app:backgroundTint="@null" />
     </LinearLayout>
 
     <!-- Bottom-Left Status & Speed HUD Pill -->
@@ -322,6 +338,28 @@
                     android:max="60"
                     android:min="5"
                     android:progress="20" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="6dp"
+                    android:text="AI MODELS"
+                    android:textColor="#9CA3AF"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnImportModelSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_primary_button"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:text="Import Model (.tflite)"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    app:backgroundTint="@null" />
             </LinearLayout>
         </ScrollView>
     </LinearLayout>
