@@ -16,12 +16,10 @@ DriveGuard (`com.github.trunone.drive_guard`) is an Android application written 
 ## Setup & Assets
 
 ### Model Download Links
-Official TensorFlow Lite model files can be downloaded from the official repository release page or official model sites:
-- **Official DriveGuard Releases**: [DriveGuard GitHub Releases Page](https://github.com/trunone/drive_guard/releases)
-- **Stage 1 Object Detector**: [`yolov8n_traffic_detector.tflite`](https://github.com/trunone/drive_guard/releases/download/v1.0.0/yolov8n_traffic_detector.tflite)
-- **Stage 2 State Classifier**: [`traffic_state_classifier.tflite`](https://github.com/trunone/drive_guard/releases/download/v1.0.0/traffic_state_classifier.tflite)
-- **Official TensorFlow Lite Models**: [TensorFlow Lite Models Guide](https://www.tensorflow.org/lite/models)
-- **Official Ultralytics Documentation**: [Ultralytics YOLOv8 Docs](https://docs.ultralytics.com)
+Model files can be downloaded from official project releases and model sites:
+- **Official DriveGuard Releases Site**: [https://github.com/trunone/drive_guard/releases](https://github.com/trunone/drive_guard/releases)
+- **Official TensorFlow Lite Website**: [https://www.tensorflow.org/lite/models](https://www.tensorflow.org/lite/models)
+- **Official Ultralytics Website**: [https://ultralytics.com](https://ultralytics.com)
 
 ### Model Import Options
 You can load the model files into DriveGuard using either method:
