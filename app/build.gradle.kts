@@ -26,7 +26,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    androidResources { noCompress += "tflite" }
+    androidResources {
+        noCompress += listOf("tflite", "cact")
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
