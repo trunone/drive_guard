@@ -5,9 +5,9 @@ DriveGuard (`com.github.trunone.drive_guard`) is an Android application written 
 ## Key Features
 
 - **Dual-Source Video Feed**: Supports standard device camera feeds via CameraX as well as live RTSP video streams.
-- **Two-Stage Traffic Light Vision Pipeline**:
-  - **Stage 1 Object Detection**: Uses `yolov8n_traffic_detector.tflite` for fast localized traffic signal bounding box detection.
-  - **Stage 2 State Classification**: Uses `traffic_state_classifier.tflite` alongside temporal smoothing (`TemporalSmoothingDispatcher`) for accurate traffic light state classification (Red, Yellow, Green, Off, Unknown).
+- **Vision Pipeline & Hazard Detection**:
+  - **Mirage Vision Engine**: Powered by [Cactus Compute Mirage](https://huggingface.co/Cactus-Compute/mirage) (`mirage.cact`), an on-device vision model bundled directly with the application for multi-class detection (traffic lights, vehicles, pedestrians, cyclists, stop signs) and structured scene perception.
+  - **Two-Stage Traffic Light Vision Pipeline**: Stage 1 object detection and Stage 2 crop classification (`traffic_state_classifier.tflite`) with temporal smoothing (`TemporalSmoothingDispatcher`) for traffic light state classification (Red, Yellow, Green, Green Arrows, Off, Unknown).
 - **Driver Hazard Analysis**: Pinpoints objects (vehicles, pedestrians, cyclists) in the ego lane using pinhole monocular distance estimation, safe headway/time-to-collision (TTC) calculations, and configurable thresholds.
 - **V2X & MQTT iVRI Ingestion**: Ingests real-time traffic signal streams via MQTT (`org.eclipse.paho`) parsing iVRI payloads, persisted locally via Room (`AppDatabase`).
 - **G-Force Monitoring**: Real-time G-force sensor tracking (`GForceSensorManager`) with peak recording and orientation calibration rendered with Jetpack Compose (`GForceMeterCard`).
@@ -17,15 +17,16 @@ DriveGuard (`com.github.trunone.drive_guard`) is an Android application written 
 
 ### Required Model Files
 
-The application requires two TensorFlow Lite model files:
+The application bundles and supports:
 
-- **`yolov8n_traffic_detector.tflite`**: Stage 1 object detector used for real-time bounding box detection of traffic lights, vehicles (cars, trucks, buses, motorcycles), pedestrians, cyclists, and stop signs.
+- **`mirage.cact`**: [Cactus Compute Mirage](https://huggingface.co/Cactus-Compute/mirage) vision model bundled in `app/src/main/assets/` for real-time localized bounding box detection and structured understanding of traffic lights, vehicles (cars, trucks, buses, motorcycles), pedestrians, cyclists, and stop signs.
 - **`traffic_state_classifier.tflite`**: Stage 2 classification engine used to crop detected traffic signals and classify their state (Red, Yellow, Green, Left/Right Green Arrow, Off, Unknown).
+- **`yolov8n_traffic_detector.tflite`**: Optional Stage 1 fallback object detector.
 
 ### Model Import Options
-You can load these model files into DriveGuard using either method:
-- **In-App Import (Runtime)**: Place `.tflite` model files on your device storage, tap **"Import Model (.tflite)"** on the top banner or in the Settings panel within the app, and select the file.
-- **Build-Time Assets**: Place the model files directly into `app/src/main/assets/` before compiling.
+You can load or update these model files into DriveGuard using either method:
+- **Bundled Assets (Build-Time)**: `mirage.cact` is pre-bundled in `app/src/main/assets/`. Additional models can be placed in `app/src/main/assets/` before compiling.
+- **In-App Import (Runtime)**: Place `.cact` or `.tflite` model files on device storage, tap **"Import Model (.cact / .tflite)"** on the top banner or in the Settings panel within the app, and select the file.
 
 ### Getting Started
 1. Open the project in Android Studio (Java 17 required).
@@ -35,7 +36,7 @@ You can load these model files into DriveGuard using either method:
 ## Architecture Highlights
 
 - **`com.github.trunone.drive_guard`**: Base package containing `MainActivity` HUD integration.
-- **`vision/`**: Stage 1 YOLOv8 detector, Stage 2 traffic state classifier, and temporal smoothing dispatcher.
+- **`vision/`**: Mirage detector (`MirageDetector`), Cactus Native JNI integration (`CactusNative`), Stage 1 detector, Stage 2 traffic state classifier, and temporal smoothing dispatcher.
 - **`sensor/` & `ui/`**: G-Force sensor manager, Jetpack Compose HUD dashboards, and bounding box overlays.
 - **`mqtt/` & `data/`**: MQTT client manager for iVRI traffic signals, Room database (`AppDatabase`, `TrafficLightDao`), and repository pattern.
 - **`service/`**: Foreground `LocationTrackingService` for GPS speed and region boundary evaluations.

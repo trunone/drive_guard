@@ -111,18 +111,22 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Throwable) {
             b.bannerCard.visibility = View.VISIBLE
             b.btnImportModelBanner.visibility = View.VISIBLE
-            b.banner.text = "Model missing: add ${HazardDetector.MODEL} or import .tflite file"
+            b.banner.text = "Model missing: add ${HazardDetector.MODEL} or import model file"
         }
     }
 
     private fun importModelFile(uri: android.net.Uri) {
         try {
-            val fileName = getFileNameFromUri(uri) ?: "yolov8n_traffic_detector.tflite"
+            val fileName = getFileNameFromUri(uri) ?: HazardDetector.MODEL
             val targetName = when {
+                fileName.endsWith(".cact", ignoreCase = true) || fileName.contains("mirage", ignoreCase = true) ->
+                    "mirage.cact"
                 fileName.contains("classifier", ignoreCase = true) || fileName.contains("state", ignoreCase = true) ->
                     "traffic_state_classifier.tflite"
-                else ->
+                fileName.contains("yolo", ignoreCase = true) ->
                     "yolov8n_traffic_detector.tflite"
+                else ->
+                    fileName
             }
             val destFile = java.io.File(filesDir, targetName)
             contentResolver.openInputStream(uri)?.use { input ->
